@@ -13,9 +13,10 @@
 # testing
 /coverage
 
-# next.js
-/.next/
+# next.js (distDir: dist; ignore legacy .next if present)
+/dist/
 /out/
+/.next/
 
 # production
 /build
