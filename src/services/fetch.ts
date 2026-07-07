@@ -1,11 +1,12 @@
 // src/services/fetch.ts
 export async function fetchData(url: string, data?: object) {
-  // // Verifique se está no servidor (build/SSR)
-  // if (typeof window === 'undefined' && !process.env.API_URL) {
-  //   throw new Error('API_URL não definida para o ambiente de build');
-  // }
+  // No navegador, URLs relativas já resolvem para o host correto (o mesmo
+  // que serviu a página), então não devem ser reescritas para uma URL fixa —
+  // isso quebraria o acesso vindo de outros dispositivos na rede.
+  // No servidor (SSR/API routes chamando outras rotas), fetch exige URL absoluta.
+  const isServer = typeof window === 'undefined'
 
-  const parsedUrl = url.startsWith('/')
+  const parsedUrl = url.startsWith('/') && isServer
     ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3993'}${url}`
     : url;
 
