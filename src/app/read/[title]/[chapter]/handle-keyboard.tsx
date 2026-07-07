@@ -2,7 +2,9 @@
 
 import { useRouter } from 'next/navigation'
 import { useEffect, type Dispatch, type SetStateAction } from 'react'
-import { saveToHistory } from '@/utils/history'
+import { getChapters, getHistory, saveToHistory } from '@/utils/history'
+import { BIND_CODE_KEY } from '@/utils/bind'
+import { fetchData } from '@/services/fetch'
 
 export default function HandleKeyboardNavigation({
     nextChapter,
@@ -27,6 +29,16 @@ export default function HandleKeyboardNavigation({
 
         // Save the title to history
         saveToHistory(title, currentChapter)
+
+        // Push the updated reading progress to the connected bind, if any
+        const bindCode = localStorage.getItem(BIND_CODE_KEY)
+        if (bindCode) {
+            fetchData(`/api/bind/${bindCode}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ history: getHistory(), chapters: getChapters() }),
+            })
+        }
 
         const handleKeyDown = (event: KeyboardEvent) => {
             const el = event.target as HTMLElement | null

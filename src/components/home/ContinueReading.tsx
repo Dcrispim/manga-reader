@@ -4,7 +4,9 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { LucideChevronLeft, LucideChevronRight, LucideHistory } from 'lucide-react'
-import { getHistory, TitleHistory } from '@/utils/history'
+import { getChapters, getHistory, setChapters, setHistory } from '@/utils/history'
+import { BIND_CODE_KEY, BindData, mergeBindData } from '@/utils/bind'
+import { fetchData } from '@/services/fetch'
 
 interface ReadingProgress {
   id: string
@@ -19,27 +21,45 @@ export default function ContinueReading() {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [readings, setReadings] = useState<ReadingProgress[]>([])
   useEffect(() => {
-    try {
-      const history = getHistory()
-      const chaptersData = localStorage.getItem('chapters')
-      if (!chaptersData) return
+    async function syncAndLoad() {
+      try {
+        // If this device is connected to a bind, pull and merge remote progress first
+        const bindCode = localStorage.getItem(BIND_CODE_KEY)
+        if (bindCode) {
+          const remote = await fetchData(`/api/bind/${bindCode}`)
+          if (remote && !remote.error) {
+            const merged = mergeBindData(
+              { history: getHistory(), chapters: getChapters() },
+              { history: (remote as BindData).history, chapters: (remote as BindData).chapters }
+            )
+            setHistory(merged.history)
+            setChapters(merged.chapters)
+          }
+        }
 
-      const chapters: Record<string, string> = JSON.parse(chaptersData)
-      const progressList: ReadingProgress[] = Object.entries(chapters).map(([name, chapter]) => ({
-        lastRead: history[name].lastRead ?? 0,
-        id: name,
-        name,
-        chapter,
-        thumb: `/api/read/${name}/01/thumb`,
-        link: `/read/${name}/${chapter}`,
-      }))
-      
-      console.log(history)
+        const history = getHistory()
+        const chapters = getChapters()
+        if (Object.keys(chapters).length === 0) {
+          setReadings([])
+          return
+        }
 
-      setReadings(progressList)
-    } catch {
-      setReadings([])
+        const progressList: ReadingProgress[] = Object.entries(chapters).map(([name, chapter]) => ({
+          lastRead: history[name]?.lastRead ?? 0,
+          id: name,
+          name,
+          chapter,
+          thumb: `/api/read/${name}/01/thumb`,
+          link: `/read/${name}/${chapter}`,
+        }))
+
+        setReadings(progressList)
+      } catch {
+        setReadings([])
+      }
     }
+
+    syncAndLoad()
   }, [])
 
 
@@ -53,8 +73,6 @@ export default function ContinueReading() {
       behavior: 'smooth',
     })
   }
-
-console.log(readings)
 
   if (readings.length === 0) return null
 
