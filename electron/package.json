@@ -1,0 +1,8 @@
+{
+  "name": "chap-find-electron",
+  "version": "1.0.0",
+  "description": "Chap Find - Electron App",
+  "main": "main.js",
+  "author": "",
+  "license": "MIT"
+}
