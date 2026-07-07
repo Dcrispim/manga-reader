@@ -1,10 +1,9 @@
-import GridView from '@/components/GridView'; // Import the new component
-import { Button } from '@/components/ui/button'
 import { fetchData } from '@/services/fetch'
-import i18n from '@/services/i18n'
 import Link from 'next/link'
+import { Button } from '@/components/ui/button'
 import ReadChapterClient from './read-chapter-client'
-import { getNextChapter } from '@/utils/utils.server';
+import { getNextChapter } from '@/utils/utils.server'
+import SidebarDrawer from '@/components/SidebarDrawer'
 
 
 
@@ -69,41 +68,13 @@ export default async function ReadPage({
           currentChapter={chapter}
         />
       </div>
-      <div className="flex flex-col items-center w-[20%]">
-        <div className="flex flex-col items-center w-full px-4">
-          {chapter !== '@local' && (
-            <Link
-              className="w-full"
-              href={handleNavigation('next') || `/title/${title}`}
-            >
-              <Button>
-                <label>{i18n('Next')}</label>
-              </Button>
-            </Link>
-          )}
-          <Link className="w-full" href={`/read/${title}`}>
-            <Button>
-              <label className='capitalize'>{title.replaceAll("-"," ")}</label>
-            </Button>
-          </Link>
-          <Link className="w-full" href={`/`}>
-            <Button>
-              <label>{i18n('Home')}</label>
-            </Button>
-          </Link>
-          {chapter !== '@local' && (
-            <Link
-              className="w-full"
-              href={handleNavigation('prev') || `/title/${title}`}
-            >
-              <Button>
-                <label>{i18n('Previous')}</label>
-              </Button>
-            </Link>
-          )}
-        </div>
-        <GridView chapters={titleInfos.chapters} title={title} chapter={chapter} />
-      </div>
+      <SidebarDrawer
+        title={title}
+        chapter={chapter}
+        chapters={titleInfos.chapters}
+        nextUrl={handleNavigation('next')}
+        prevUrl={handleNavigation('prev')}
+      />
     </div>
   )
 }
