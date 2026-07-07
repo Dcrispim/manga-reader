@@ -1,5 +1,6 @@
 import { readdir, readFile, stat } from 'fs/promises'
 import path from 'path'
+import { cache } from 'react'
 
 const ROOT_PATH = '/mnt/d/manga'
 const META_PATH = path.join(ROOT_PATH, '.meta')
@@ -162,7 +163,10 @@ export async function readMetadata(titleName: string): Promise<MetadataContent> 
   }
 }
 
-export async function getAllTitles(): Promise<TitleInfo[]> {
+// Cached per render/build so that the many calls fanning out from
+// getCategories()/getTitlesByCategory() don't each re-scan the whole
+// manga library on disk.
+export const getAllTitles = cache(async (): Promise<TitleInfo[]> => {
   try {
     const titles = await readdir(ROOT_PATH, { withFileTypes: true })
 
@@ -193,7 +197,7 @@ export async function getAllTitles(): Promise<TitleInfo[]> {
   } catch {
     return []
   }
-}
+})
 
 export interface CategoryMap {
   [categoryId: string]: {
@@ -202,7 +206,7 @@ export interface CategoryMap {
   }
 }
 
-export async function buildCategoryMap(): Promise<CategoryMap> {
+export const buildCategoryMap = cache(async (): Promise<CategoryMap> => {
   const titles = await getAllTitles()
   const categoryMap: CategoryMap = {}
 
@@ -254,7 +258,7 @@ export async function buildCategoryMap(): Promise<CategoryMap> {
   }
 
   return categoryMap
-}
+})
 
 export async function getCategories(): Promise<{ id: string; name: string; count: number }[]> {
   const categoryMap = await buildCategoryMap()
