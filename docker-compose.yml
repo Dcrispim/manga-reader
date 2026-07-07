@@ -1,0 +1,11 @@
+services:
+  manga-reader:
+    build:
+      context: https://github.com/Dcrispim/manga-reader.git#main
+    image: manga-reader:latest
+    ports:
+      - "0.0.0.0:3993:3993"
+    volumes:
+      - /mnt/d/manga:/mnt/d/manga
+      - /mnt/d/manga-xl:/mnt/d/manga-xl
+    restart: unless-stopped
