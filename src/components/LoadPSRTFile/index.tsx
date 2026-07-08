@@ -1,4 +1,4 @@
-import { fileUpload } from '@/lib/utils'
+//import { fileUpload } from '@/lib/utils'
 import i18n from '@/services/i18n'
 import { parsePSRT } from '@/services/psrt/parserPSRT'
 import { PSRTFile } from '@/services/psrt/types'
@@ -30,7 +30,7 @@ export function LoadPSRTFile({
   return (
     <div className="flex w-full h-[100%]">
       <Button
-        onClick={() => fileUpload(handleFileUpload)}
+        //onClick={() => fileUpload(handleFileUpload)}
         className={className}
       >
         {i18n('Load')}

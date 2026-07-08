@@ -1,6 +1,7 @@
 'use client'
 import { Reader } from '@/components/Reader'
 import i18n from '@/services/i18n'
+import { ChapterType } from '@/services/psrt/types'
 import { LucideArrowLeft } from 'lucide-react'
 import { useState } from 'react'
 
@@ -27,7 +28,7 @@ export default function ReadPage() {
       {images.psrtContent && (
         <Reader
           title={title}
-          images={images}
+          images={images as ChapterType}
           chapter="@local"
           setImages={(psrtContent) => {
             setImages({ psrtContent })
