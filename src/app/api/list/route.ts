@@ -4,6 +4,9 @@ import path from "path";
 
 const ROOT_PATH = "/mnt/d/manga";
 
+// See src/app/page.tsx for why this is needed in Docker.
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   try {
     // Lê todos os diretórios no caminho raiz
