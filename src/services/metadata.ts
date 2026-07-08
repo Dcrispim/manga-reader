@@ -166,31 +166,55 @@ export async function readMetadata(titleName: string): Promise<MetadataContent> 
 // Cached per render/build so that the many calls fanning out from
 // getCategories()/getTitlesByCategory() don't each re-scan the whole
 // manga library on disk.
+// dirent.isDirectory() relies on d_type from the filesystem, which some
+// virtualized bind mounts (e.g. Docker Desktop's 9p/virtiofs translation of
+// NTFS on Windows) don't populate — it silently reports false for real
+// directories. Fall back to stat() whenever that happens.
+async function isDirectory(dirent: import('fs').Dirent, fullPath: string): Promise<boolean> {
+  if (dirent.isDirectory()) return true
+  try {
+    return (await stat(fullPath)).isDirectory()
+  } catch {
+    return false
+  }
+}
+
 export const getAllTitles = cache(async (): Promise<TitleInfo[]> => {
   try {
-    const titles = await readdir(ROOT_PATH, { withFileTypes: true })
+    const entries = await readdir(ROOT_PATH, { withFileTypes: true })
+
+    const titleNames = (
+      await Promise.all(
+        entries
+          .filter((dirent) => !dirent.name.startsWith('.'))
+          .map(async (dirent) =>
+            (await isDirectory(dirent, path.join(ROOT_PATH, dirent.name))) ? dirent.name : null
+          )
+      )
+    ).filter((name): name is string => name !== null)
 
     const titleList = await Promise.all(
-      titles
-        .filter((dirent) => dirent.isDirectory() && !dirent.name.startsWith('.'))
-        .map(async (dirent) => {
-          const titlePath = path.join(ROOT_PATH, dirent.name)
-          const caps = await readdir(titlePath, { withFileTypes: true })
-          const stats = await stat(titlePath)
-          const metadata = await readMetadata(dirent.name)
+      titleNames.map(async (name) => {
+        const titlePath = path.join(ROOT_PATH, name)
+        const capEntries = await readdir(titlePath, { withFileTypes: true })
+        const capDirs = await Promise.all(
+          capEntries.map((c) => isDirectory(c, path.join(titlePath, c.name)))
+        )
+        const stats = await stat(titlePath)
+        const metadata = await readMetadata(name)
 
-          return {
-            id: dirent.name.toLowerCase().replace(/\s+/g, '-'),
-            name: dirent.name,
-            thumb: `/api/read/${dirent.name}/01/thumb`,
-            description: metadata.author ? `Por ${metadata.author}` : `Description for ${dirent.name}`,
-            caps: caps.filter((c) => c.isDirectory()).length,
-            link: `/read/${dirent.name.toLowerCase().replace(/\s+/g, '-')}`,
-            modifiedAt: stats.mtimeMs,
-            categories: metadata.categories,
-            author: metadata.author,
-          }
-        })
+        return {
+          id: name.toLowerCase().replace(/\s+/g, '-'),
+          name,
+          thumb: `/api/read/${name}/01/thumb`,
+          description: metadata.author ? `Por ${metadata.author}` : `Description for ${name}`,
+          caps: capDirs.filter(Boolean).length,
+          link: `/read/${name.toLowerCase().replace(/\s+/g, '-')}`,
+          modifiedAt: stats.mtimeMs,
+          categories: metadata.categories,
+          author: metadata.author,
+        }
+      })
     )
 
     return titleList
