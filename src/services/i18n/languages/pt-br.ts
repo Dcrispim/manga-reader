@@ -58,6 +58,7 @@ const ptBr = {
       'Sign in': 'Logar',
       Chapter: 'Capítulo',
       Connect: 'Conectar',
+      Settings: 'Configurações',
       'Sync Up': 'Gerar código',
       'Sync In': 'Usar código',
       'Sync Up description': 'Gere um código para conectar este dispositivo e sincronizar seu histórico de leitura em outros aparelhos.',
