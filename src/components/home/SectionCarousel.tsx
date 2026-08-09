@@ -35,7 +35,12 @@ function PreviewCard({ item }: PreviewCardProps) {
       const response = await fetch(`/api/read/${item.name}/01`)
       const data = await response.json()
       if (data.images && data.images.length > 0) {
-        const limitedImages = data.images.slice(0, 10)
+        // Skip the first couple pages: often a credits/ad splash (sometimes
+        // several stitched into one tall image by the download tool) rather
+        // than actual content. Falls back to the start for short chapters.
+        const limitedImages = data.images.length > 4
+          ? data.images.slice(2, 12)
+          : data.images.slice(0, 10)
         setPreviewImages(limitedImages)
         setCurrentImageIndex(0)
 

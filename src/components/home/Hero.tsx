@@ -11,16 +11,25 @@ interface HeroProps {
   allTitles: Title[]
 }
 
+// Chapter-01 page index used for the hero backdrop. Page 0 is frequently a
+// credits/ad splash (sometimes several stitched into one tall image by the
+// download tool), so we skip ahead a couple pages to land on something that
+// shows the actual vibe of the work. Falls back to the curated thumb via
+// onError if the chapter is too short to have this page.
+const HERO_PAGE_OFFSET = 2
+
 export default function Hero({ title:initialTitle, allTitles = [] }: HeroProps) {
   const [title, setTitle] = useState(initialTitle)
   const [readLink, setReadLink] = useState(initialTitle.link)
   const [savedChapter, setSavedChapter] = useState<string | null>(null)
+  const [heroImage, setHeroImage] = useState(`/api/read/${initialTitle.id}/01/${HERO_PAGE_OFFSET}`)
 
   useEffect(() => {
    setTimeout(() => {
     const newTitle = allTitles[Math.floor(Math.random() * allTitles.length)]
     setTitle( newTitle as Title)
     setReadLink(`/read/${newTitle.id}`)
+    setHeroImage(`/api/read/${newTitle.id}/01/${HERO_PAGE_OFFSET}`)
    }, 20000)
   }, [allTitles])
 
@@ -45,11 +54,12 @@ export default function Hero({ title:initialTitle, allTitles = [] }: HeroProps) 
     <div className="relative w-full h-[60vh] min-h-[400px] overflow-hidden">
       <div className="absolute inset-0">
         <Image
-          src={title.thumb}
+          src={heroImage}
           alt={title.name}
           fill
           className="object-cover"
           priority
+          onError={() => setHeroImage(title.thumb)}
         />
         <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
