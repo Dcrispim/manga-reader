@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { readdir } from "fs/promises";
+import { readdir, stat } from "fs/promises";
 import path from "path";
 
 const ROOT_PATH = "/mnt/d/manga";
@@ -24,7 +24,19 @@ export async function GET(
       .sort((a, b) => a.num - b.num)
       .map(chap => chap.name); // Retorna apenas os nomes ordenados
 
-    return NextResponse.json({ chapters: sortedChapters });
+    const modified: Record<string, number> = {};
+    await Promise.all(
+      sortedChapters.map(async (chap) => {
+        try {
+          const stats = await stat(path.join(titlePath, chap));
+          modified[chap] = stats.mtimeMs;
+        } catch {
+          // dir vanished mid-scan — leave it out of the map
+        }
+      })
+    );
+
+    return NextResponse.json({ chapters: sortedChapters, modified });
   } catch (error) {
     return NextResponse.json({ error: "Erro ao listar capítulos" }, { status: 500 });
   }

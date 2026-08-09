@@ -1,116 +1,10 @@
 import { readdir, readFile, stat } from 'fs/promises'
 import path from 'path'
 import { cache } from 'react'
+import { normalizeCategory } from '@/utils/categories'
 
 const ROOT_PATH = '/mnt/d/manga'
 const META_PATH = path.join(ROOT_PATH, '.meta')
-
-const CATEGORY_ALIASES: Record<string, string> = {
-  'action': 'Ação',
-  'acao': 'Ação',
-  'ação': 'Ação',
-  'adventure': 'Aventura',
-  'aventura': 'Aventura',
-  'comedy': 'Comédia',
-  'comedia': 'Comédia',
-  'comédia': 'Comédia',
-  'drama': 'Drama',
-  'fantasy': 'Fantasia',
-  'fantasia': 'Fantasia',
-  'horror': 'Horror',
-  'terror': 'Terror',
-  'isekai': 'Isekai',
-  'magic': 'Magia',
-  'magia': 'Magia',
-  'martial arts': 'Artes Marciais',
-  'artes marciais': 'Artes Marciais',
-  'mecha': 'Mecha',
-  'mystery': 'Mistério',
-  'misterio': 'Mistério',
-  'mistério': 'Mistério',
-  'psychological': 'Psicológico',
-  'psicologico': 'Psicológico',
-  'psicológico': 'Psicológico',
-  'romance': 'Romance',
-  'sci-fi': 'Ficção Científica',
-  'scifi': 'Ficção Científica',
-  'science fiction': 'Ficção Científica',
-  'ficção científica': 'Ficção Científica',
-  'ficcao cientifica': 'Ficção Científica',
-  'seinen': 'Seinen',
-  'shoujo': 'Shoujo',
-  'shojo': 'Shoujo',
-  'shounen': 'Shounen',
-  'shonen': 'Shounen',
-  'slice of life': 'Slice of Life',
-  'supernatural': 'Sobrenatural',
-  'sobrenatural': 'Sobrenatural',
-  'sports': 'Esportes',
-  'esportes': 'Esportes',
-  'thriller': 'Thriller',
-  'zombie': 'Zumbi',
-  'zumbi': 'Zumbi',
-  'historical': 'Histórico',
-  'historico': 'Histórico',
-  'histórico': 'Histórico',
-  'school': 'Escolar',
-  'escolar': 'Escolar',
-  'school life': 'Vida Escolar',
-  'vida escolar': 'Vida Escolar',
-  'ecchi': 'Ecchi',
-  'harem': 'Harem',
-  'josei': 'Josei',
-  'mature': 'Maduro',
-  'maduro': 'Maduro',
-  'adult': 'Adulto',
-  'adulto': 'Adulto',
-  'gore': 'Gore',
-  'military': 'Militar',
-  'militar': 'Militar',
-  'music': 'Música',
-  'musica': 'Música',
-  'música': 'Música',
-  'parody': 'Paródia',
-  'parodia': 'Paródia',
-  'paródia': 'Paródia',
-  'police': 'Policial',
-  'policial': 'Policial',
-  'post-apocalyptic': 'Pós-Apocalíptico',
-  'pos-apocaliptico': 'Pós-Apocalíptico',
-  'pós-apocalíptico': 'Pós-Apocalíptico',
-  'reincarnation': 'Reencarnação',
-  'reencarnacao': 'Reencarnação',
-  'reencarnação': 'Reencarnação',
-  'revenge': 'Vingança',
-  'vinganca': 'Vingança',
-  'vingança': 'Vingança',
-  'samurai': 'Samurai',
-  'space': 'Espaço',
-  'espaco': 'Espaço',
-  'espaço': 'Espaço',
-  'super power': 'Super Poderes',
-  'super powers': 'Super Poderes',
-  'super poderes': 'Super Poderes',
-  'survival': 'Sobrevivência',
-  'sobrevivencia': 'Sobrevivência',
-  'sobrevivência': 'Sobrevivência',
-  'time travel': 'Viagem no Tempo',
-  'viagem no tempo': 'Viagem no Tempo',
-  'tragedy': 'Tragédia',
-  'tragedia': 'Tragédia',
-  'tragédia': 'Tragédia',
-  'vampire': 'Vampiro',
-  'vampiro': 'Vampiro',
-  'video game': 'Video Game',
-  'webtoon': 'Webtoon',
-  'manhwa': 'Manhwa',
-  'manhua': 'Manhua',
-}
-
-function normalizeCategory(category: string): string {
-  const key = category.toLowerCase().trim()
-  return CATEGORY_ALIASES[key] || category
-}
 
 export interface TitleInfo {
   id: string
@@ -124,16 +18,32 @@ export interface TitleInfo {
   author: string
 }
 
-interface MetadataContent {
+export interface MetadataContent {
   categories: string[]
   author: string
+  // Either a count ("17", split evenly across the chapter range) or a
+  // comma list of chapter numbers where each volume starts ("1,23,40").
+  volumes: string
+  status: string
+  type: string
+  demographic: string
+  published: string
+  description: string
+}
+
+const EMPTY_METADATA: MetadataContent = {
+  categories: [],
+  author: '',
+  volumes: '',
+  status: '',
+  type: '',
+  demographic: '',
+  published: '',
+  description: '',
 }
 
 function parseMetadataFile(content: string): MetadataContent {
-  const result: MetadataContent = {
-    categories: [],
-    author: '',
-  }
+  const result: MetadataContent = { ...EMPTY_METADATA }
 
   const lines = content.split('\n')
   for (const line of lines) {
@@ -143,10 +53,34 @@ function parseMetadataFile(content: string): MetadataContent {
     const [key, ...valueParts] = trimmed.split('=')
     const value = valueParts.join('=').trim()
 
-    if (key === 'categories') {
-      result.categories = value.split(',').map((c) => c.trim()).filter(Boolean)
-    } else if (key === 'author') {
-      result.author = value
+    switch (key) {
+      case 'categories':
+        result.categories = value.split(',').map((c) => c.trim()).filter(Boolean)
+        break
+      case 'author':
+      case 'authors':
+        result.author = value
+        break
+      case 'volumes':
+        result.volumes = value
+        break
+      case 'status':
+        result.status = value
+        break
+      case 'type':
+        result.type = value
+        break
+      case 'demographic':
+        result.demographic = value
+        break
+      case 'published':
+        result.published = value
+        break
+      case 'description':
+      case 'synopsis':
+      case 'sinopse':
+        result.description = value
+        break
     }
   }
 
@@ -159,7 +93,7 @@ export async function readMetadata(titleName: string): Promise<MetadataContent> 
     const content = await readFile(metadataPath, 'utf-8')
     return parseMetadataFile(content)
   } catch {
-    return { categories: [], author: '' }
+    return { ...EMPTY_METADATA }
   }
 }
 
