@@ -10,6 +10,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import Connect from '@/components/SidebarDrawer/Connect'
+import RebuildSearchIndex from '@/components/home/RebuildSearchIndex'
 import i18n from '@/services/i18n'
 
 export default function SettingsFab() {
@@ -30,6 +31,7 @@ export default function SettingsFab() {
           <DialogTitle>{i18n('Settings')}</DialogTitle>
         </DialogHeader>
         <Connect />
+        <RebuildSearchIndex />
       </DialogContent>
     </Dialog>
   )
