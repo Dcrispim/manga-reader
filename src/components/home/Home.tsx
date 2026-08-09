@@ -4,6 +4,7 @@ import Hero from '@/components/home/Hero'
 import SectionCarousel from '@/components/home/SectionCarousel'
 import ContinueReading from '@/components/home/ContinueReading'
 import SettingsFab from '@/components/home/SettingsFab'
+import SpotlightSearch from '@/components/home/SpotlightSearch'
 
 export default async function Home() {
   const categories = await getCategories()
@@ -27,6 +28,7 @@ export default async function Home() {
     <div className="min-h-screen bg-black space-y-8 pb-12">
       {featuredTitle && <Hero title={featuredTitle} allTitles={Object.values(titlesByCategory).flat()} />}
       <SettingsFab />
+      <SpotlightSearch />
       <ContinueReading />
       {categories.filter((category) => category.count > 2).map((category) => (
         <SectionCarousel

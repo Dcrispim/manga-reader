@@ -48,6 +48,14 @@
   scrollbar-base-color: black;
 }
 
+.scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 :root {
   --radius: 0.625rem;
   --background: oklch(1 0 0);
