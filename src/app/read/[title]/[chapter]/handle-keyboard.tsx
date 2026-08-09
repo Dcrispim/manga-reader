@@ -2,8 +2,8 @@
 
 import { useRouter } from 'next/navigation'
 import { useEffect, type Dispatch, type SetStateAction } from 'react'
-import { getChapters, getHistory, saveToHistory } from '@/utils/history'
-import { BIND_CODE_KEY } from '@/utils/bind'
+import { getChapters, getHistory, getLatestChapter, saveToHistory, setChapters } from '@/utils/history'
+import { BIND_CODE_KEY, buildDeltaPayload, getLastSync, setLastSync } from '@/utils/bind'
 import { fetchData } from '@/services/fetch'
 
 export default function HandleKeyboardNavigation({
@@ -22,21 +22,29 @@ export default function HandleKeyboardNavigation({
     const router = useRouter()
 
     useEffect(() => {
-        // Save the current chapter to localStorage
-        const savedChapters = JSON.parse(localStorage.getItem('chapters') || '{}')
-        savedChapters[title] = currentChapter
-        localStorage.setItem('chapters', JSON.stringify(savedChapters))
-
-        // Save the title to history
+        // Save the title to history (additive: only genuinely new chapters
+        // get a fresh timestamp, so a stale reload of an old chapter can't
+        // look "more recent" than real progress made elsewhere).
         saveToHistory(title, currentChapter)
 
-        // Push the updated reading progress to the connected bind, if any
+        // Derive the "continue from" chapter from the recorded open times
+        // instead of blindly trusting whatever chapter this mount happened
+        // to load, which protects against the same stale-reload scenario.
+        const savedChapters = getChapters()
+        savedChapters[title] = getLatestChapter(getHistory()[title]) ?? currentChapter
+        setChapters(savedChapters)
+
+        // Push only what changed since the last sync to the connected bind, if any
         const bindCode = localStorage.getItem(BIND_CODE_KEY)
         if (bindCode) {
+            const since = getLastSync()
+            const now = Date.now()
             fetchData(`/api/bind/${bindCode}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ history: getHistory(), chapters: getChapters() }),
+                body: JSON.stringify(buildDeltaPayload({ history: getHistory(), chapters: savedChapters }, since)),
+            }).then((result) => {
+                if (result && !result.error && !result.message) setLastSync(now)
             })
         }
 

@@ -7,9 +7,12 @@ import { mergeBindData } from '@/utils/bind'
 const ROOT_PATH = '/mnt/d/manga'
 const BINDS_PATH = path.join(ROOT_PATH, '.binds')
 
+function normalizeCode(code: string) {
+  return code.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
+}
+
 function getBindPath(code: string) {
-  const safeCode = code.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
-  return path.join(BINDS_PATH, `${safeCode}.json`)
+  return path.join(BINDS_PATH, `${normalizeCode(code)}.json`)
 }
 
 async function readBind(code: string): Promise<BindData | null> {
@@ -44,19 +47,20 @@ export async function POST(
     const body: Partial<BindPayload> = await request.json().catch(() => ({}))
     const existing = await readBind(code)
 
-    if (!existing) {
-      return NextResponse.json({ error: 'Código não encontrado' }, { status: 404 })
-    }
-
+    // A device pushing to a code it's already bound to shouldn't get
+    // permanently stranded if the bind file was deleted out from under it
+    // (e.g. manually on disk) — recreate it under the same code instead of
+    // 404ing forever, so already-connected devices keep syncing.
     const merged = mergeBindData(
-      { history: existing.history, chapters: existing.chapters },
+      { history: existing?.history || {}, chapters: existing?.chapters || {} },
       { history: body.history || {}, chapters: body.chapters || {} }
     )
 
+    const now = Date.now()
     const data: BindData = {
-      code: existing.code,
-      createdAt: existing.createdAt,
-      updatedAt: Date.now(),
+      code: existing?.code || normalizeCode(code),
+      createdAt: existing?.createdAt || now,
+      updatedAt: now,
       history: merged.history,
       chapters: merged.chapters,
     }

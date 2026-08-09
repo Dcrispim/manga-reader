@@ -16,7 +16,7 @@ import {
 import i18n from '@/services/i18n'
 import { fetchData } from '@/services/fetch'
 import { getChapters, getHistory, setChapters, setHistory } from '@/utils/history'
-import { BIND_CODE_KEY, BindData, mergeBindData } from '@/utils/bind'
+import { BIND_CODE_KEY, BindData, mergeBindData, setLastSync } from '@/utils/bind'
 
 export default function Connect() {
   const [syncUpOpen, setSyncUpOpen] = useState(false)
@@ -50,6 +50,7 @@ export default function Connect() {
 
       if (data && !data.error) {
         localStorage.setItem(BIND_CODE_KEY, (data as BindData).code)
+        setLastSync(Date.now())
         setCode((data as BindData).code)
       }
     } finally {
@@ -90,6 +91,11 @@ export default function Connect() {
         { history: getHistory(), chapters: getChapters() },
         { history: (remote as BindData).history, chapters: (remote as BindData).chapters }
       )
+      // Note: Sync In only pulls and merges locally — it never pushes to the
+      // server — so it must NOT advance bindLastSync (see ContinueReading.tsx
+      // for why: that watermark drives what handle-keyboard.tsx still owes
+      // the server, and bumping it here would silently drop unpushed local
+      // progress from ever being sent).
       setHistory(merged.history)
       setChapters(merged.chapters)
       localStorage.setItem(BIND_CODE_KEY, normalizedCode)

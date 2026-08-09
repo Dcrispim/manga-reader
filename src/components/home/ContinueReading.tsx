@@ -32,6 +32,11 @@ export default function ContinueReading() {
               { history: getHistory(), chapters: getChapters() },
               { history: (remote as BindData).history, chapters: (remote as BindData).chapters }
             )
+            // Note: this is a pull-only merge (never pushed to the server), so
+            // it must NOT advance bindLastSync — that watermark tracks the
+            // last successful push and drives the incremental delta in
+            // handle-keyboard.tsx. Bumping it here would make any not-yet-
+            // pushed local progress silently invisible to future pushes.
             setHistory(merged.history)
             setChapters(merged.chapters)
           }

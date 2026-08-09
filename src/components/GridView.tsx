@@ -13,7 +13,8 @@ export default function GridView({ chapters, title, chapter }: { chapters: strin
     const currentChapterRef = useRef<HTMLDivElement | null>(null)
     const [{ lastRead, history: lastChapters }, setHistory] = useState<TitleHistory>({
         lastRead: null,
-        history: []
+        history: [],
+        openedAt: {}
     })
 
 
@@ -35,7 +36,8 @@ export default function GridView({ chapters, title, chapter }: { chapters: strin
     useEffect(() => {
         let localHistory: TitleHistory = {
             lastRead: null,
-            history: []
+            history: [],
+            openedAt: {}
         }
         try {
             const allHistory = getHistory()
