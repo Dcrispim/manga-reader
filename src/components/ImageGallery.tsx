@@ -1,7 +1,6 @@
-import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 
 import HandleFocus from '@/app/read/[title]/[chapter]/handle-focus'
-import Image from 'next/image'
 import ChapterImage from './chapter-image'
 
 
@@ -12,10 +11,10 @@ export default function ImageGallery({
 }: {
   images: string[]
   zoom: number
-  nextChapter?: string
+  nextChapter?: string | null
 
 }) {
-
+  const router = useRouter()
 
   return (
     <div className='flex flex-col w-full justify-center items-center'>
@@ -30,11 +29,16 @@ export default function ImageGallery({
           height={1200 * zoom}
         />
       ))}
-      {
-        nextChapter ? <a href={nextChapter}>
-          <div className='w-full text-center'>END</div>
-        </a> : <div className='w-full text-center'>END</div>
-      }
+      <div
+        className={`w-full text-center${nextChapter ? ' cursor-pointer' : ''}`}
+        onClick={() => {
+          if (nextChapter) {
+            router.push(nextChapter)
+          }
+        }}
+      >
+        END
+      </div>
     </div>
   )
 }

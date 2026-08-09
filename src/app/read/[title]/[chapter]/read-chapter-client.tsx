@@ -37,7 +37,7 @@ export default function ReadChapterClient({
         currentChapter={currentChapter}
         setZoom={setZoom}
       />
-      <ZoomHandler images={images} title={title} zoom={zoom} setZoom={setZoom} />
+      <ZoomHandler images={images} title={title} nextChapter={nextChapter} zoom={zoom} setZoom={setZoom} />
     </>
   )
 }

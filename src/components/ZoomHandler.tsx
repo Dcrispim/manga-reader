@@ -18,11 +18,13 @@ function scrollPercentForDigit(digit: number): number {
 export default function ZoomHandler({
   images,
   title,
+  nextChapter,
   zoom,
   setZoom,
 }: {
   images: { images: string[] }
   title?: string
+  nextChapter?: string | null
   zoom: number
   setZoom: Dispatch<SetStateAction<number>>
 }) {
@@ -63,7 +65,7 @@ export default function ZoomHandler({
           onValueChange={handleZoomChange}
         />
       </div>
-      <ImageGallery images={images.images} zoom={zoom}  nextChapter={`/read/${title}/last`}/>
+      <ImageGallery images={images.images} zoom={zoom} nextChapter={nextChapter ? `/read/${title}/${nextChapter}` : null} />
     </div>
   );
 }
