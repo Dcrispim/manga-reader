@@ -7,14 +7,12 @@ import HandleKeyboardNavigation from './handle-keyboard'
 export default function ReadChapterClient({
   images,
   title,
-  nextChapter,
   prevChapter,
   currentChapter,
   isOriginal,
 }: {
   images: { images: string[] }
   title: string
-  nextChapter: string | null
   prevChapter: string | null
   currentChapter: string
   isOriginal: boolean
@@ -33,7 +31,6 @@ export default function ReadChapterClient({
   return (
     <>
       <HandleKeyboardNavigation
-        nextChapter={nextChapter}
         prevChapter={prevChapter}
         title={title}
         currentChapter={currentChapter}
@@ -43,7 +40,6 @@ export default function ReadChapterClient({
         images={images}
         title={title}
         currentChapter={currentChapter}
-        nextChapter={nextChapter}
         zoom={zoom}
         setZoom={setZoom}
         isOriginal={isOriginal}

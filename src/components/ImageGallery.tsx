@@ -1,20 +1,16 @@
-import { useRouter } from 'next/navigation'
-
 import HandleFocus from '@/app/read/[title]/[chapter]/handle-focus'
+import { useNextChapterNavigation } from '@/app/read/[title]/[chapter]/next-chapter-navigation'
 import ChapterImage from './chapter-image'
 
 
 export default function ImageGallery({
   images,
   zoom,
-  nextChapter
 }: {
   images: string[]
   zoom: number
-  nextChapter?: string | null
-
 }) {
-  const router = useRouter()
+  const { hasNext, goToNextChapter } = useNextChapterNavigation()
 
   return (
     <div className='flex flex-col w-full justify-center items-center'>
@@ -30,10 +26,10 @@ export default function ImageGallery({
         />
       ))}
       <div
-        className={`w-full text-center${nextChapter ? ' cursor-pointer' : ''}`}
+        className={`w-full text-center${hasNext ? ' cursor-pointer' : ''}`}
         onClick={() => {
-          if (nextChapter) {
-            router.push(nextChapter)
+          if (hasNext) {
+            goToNextChapter()
           }
         }}
       >

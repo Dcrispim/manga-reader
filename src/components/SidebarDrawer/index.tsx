@@ -8,6 +8,7 @@ import i18n from '@/services/i18n'
 import GridView from '@/components/GridView'
 import Connect from '@/components/SidebarDrawer/Connect'
 import { cn } from '@/lib/utils'
+import { useNextChapterNavigation } from '@/app/read/[title]/[chapter]/next-chapter-navigation'
 
 export default function SidebarDrawer({
   title,
@@ -23,6 +24,7 @@ export default function SidebarDrawer({
   prevUrl: string | null
 }) {
   const [isOpen, setIsOpen] = useState(false)
+  const { goToNextChapter } = useNextChapterNavigation()
 
   useEffect(() => {
     const isLarge = window.innerWidth >= 1024
@@ -76,11 +78,9 @@ export default function SidebarDrawer({
 
         <div className="flex flex-col items-center w-full px-4 gap-2">
           {chapter !== '@local' && nextUrl && (
-            <Link className="w-full" href={nextUrl}>
-              <Button className="w-full">
-                <label>{i18n('Next')}</label>
-              </Button>
-            </Link>
+            <Button className="w-full" onClick={goToNextChapter}>
+              <label>{i18n('Next')}</label>
+            </Button>
           )}
           <Link className="w-full" href={`/read/${title}`}>
             <Button className="w-full">
