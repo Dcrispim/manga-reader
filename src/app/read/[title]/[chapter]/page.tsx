@@ -1,7 +1,8 @@
 import { fetchData } from "@/services/fetch";
 import ReadChapterClient from "./read-chapter-client";
-import { getNextChapter } from "@/utils/utils.server";
+import { getNextChapter, getSkippedChapterCount } from "@/utils/utils.server";
 import SidebarDrawer from "@/components/SidebarDrawer";
+import NextChapterNavigationProvider from "./next-chapter-navigation";
 
 const getPreviousChapter = (
   currentChapter: string,
@@ -35,6 +36,7 @@ export default async function ReadPage({
     chapter,
     titleInfos?.chapters.map((c: string) => parseFloat(c)),
   );
+  const skippedChapters = getSkippedChapterCount(chapter, nextChapter);
 
   const handleNavigation = (direction: "next" | "prev") => {
     if (direction === "next" && nextChapter) {
@@ -46,24 +48,28 @@ export default async function ReadPage({
   };
 
   return (
-    <div className="flex flex-row w-full h-[100vh] pb-1 justify-between">
-      <div className="flex flex-col w-full h-full">
-        <ReadChapterClient
-          images={images}
+    <NextChapterNavigationProvider
+      nextChapterUrl={handleNavigation("next")}
+      skippedChapters={skippedChapters}
+    >
+      <div className="flex flex-row w-full h-[100vh] pb-1 justify-between">
+        <div className="flex flex-col w-full h-full">
+          <ReadChapterClient
+            images={images}
+            title={title}
+            prevChapter={prevChapter ? prevChapter.toString() : null}
+            currentChapter={chapter}
+            isOriginal={isOriginal}
+          />
+        </div>
+        <SidebarDrawer
           title={title}
-          nextChapter={nextChapter ? nextChapter.toString() : null}
-          prevChapter={prevChapter ? prevChapter.toString() : null}
-          currentChapter={chapter}
-          isOriginal={isOriginal}
+          chapter={chapter}
+          chapters={titleInfos.chapters}
+          nextUrl={handleNavigation("next")}
+          prevUrl={handleNavigation("prev")}
         />
       </div>
-      <SidebarDrawer
-        title={title}
-        chapter={chapter}
-        chapters={titleInfos.chapters}
-        nextUrl={handleNavigation("next")}
-        prevUrl={handleNavigation("prev")}
-      />
-    </div>
+    </NextChapterNavigationProvider>
   );
 }

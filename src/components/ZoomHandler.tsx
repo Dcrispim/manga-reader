@@ -21,7 +21,6 @@ export default function ZoomHandler({
   images,
   title,
   currentChapter,
-  nextChapter,
   zoom,
   setZoom,
   isOriginal,
@@ -29,7 +28,6 @@ export default function ZoomHandler({
   images: { images: string[] }
   title?: string
   currentChapter?: string
-  nextChapter?: string | null
   zoom: number
   setZoom: Dispatch<SetStateAction<number>>
   isOriginal?: boolean
@@ -93,7 +91,7 @@ export default function ZoomHandler({
           )
         )}
       </div>
-      <ImageGallery images={images.images} zoom={zoom} nextChapter={nextChapter ? `/read/${title}/${nextChapter}` : null} />
+      <ImageGallery images={images.images} zoom={zoom} />
     </div>
   );
 }

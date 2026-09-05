@@ -5,21 +5,21 @@ import { useEffect, type Dispatch, type SetStateAction } from 'react'
 import { getChapters, getHistory, getLatestChapter, saveToHistory, setChapters } from '@/utils/history'
 import { BIND_CODE_KEY, buildDeltaPayload, getLastSync, setLastSync } from '@/utils/bind'
 import { fetchData } from '@/services/fetch'
+import { useNextChapterNavigation } from './next-chapter-navigation'
 
 export default function HandleKeyboardNavigation({
-    nextChapter,
     prevChapter,
     title,
     currentChapter,
     setZoom,
 }: {
-    nextChapter: string | null
     prevChapter: string | null
     title: string
     currentChapter: string
     setZoom: Dispatch<SetStateAction<number>>
 }) {
     const router = useRouter()
+    const { goToNextChapter } = useNextChapterNavigation()
 
     useEffect(() => {
         // Save the title to history (additive: only genuinely new chapters
@@ -54,8 +54,8 @@ export default function HandleKeyboardNavigation({
                 el?.closest('input, textarea, select, [contenteditable="true"]')
             )
 
-            if (event.key === 'ArrowRight' && nextChapter && !inEditable) {
-                router.push(`/read/${title}/${nextChapter}`)
+            if (event.key === 'ArrowRight' && !inEditable) {
+                goToNextChapter()
             } else if (event.key === 'ArrowLeft' && prevChapter && !inEditable) {
                 router.push(`/read/${title}/${prevChapter}`)
             } else if (
@@ -75,7 +75,7 @@ export default function HandleKeyboardNavigation({
         return () => {
             window.removeEventListener('keydown', handleKeyDown)
         }
-    }, [nextChapter, prevChapter, title, currentChapter, router, setZoom])
+    }, [prevChapter, title, currentChapter, router, setZoom, goToNextChapter])
 
     return null
 }
