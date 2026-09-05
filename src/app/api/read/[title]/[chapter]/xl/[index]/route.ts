@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import path from "path";
 import mime from "mime";
 import { readdir, readFile } from "fs/promises";
+import { resolveChapterDir } from "@/utils/chapterDir.server";
 
 const ROOT_PATH = "/mnt/d/manga-xl";
 const ROOT_PATH_SMALL = "/mnt/d/manga";
@@ -14,31 +15,19 @@ export async function GET(
 
   const titlePath = path.join(ROOT_PATH, mangaTitle);
   const smallTitle = path.join(ROOT_PATH_SMALL, mangaTitle);
-  let chapters = await readdir(smallTitle);
 
-  try{
-    chapters = await readdir(titlePath);
-  }catch{
-
+  let chapterRoot = titlePath;
+  let chapterDir = await resolveChapterDir(titlePath, chapterNumber);
+  if (!chapterDir) {
+    chapterRoot = smallTitle;
+    chapterDir = await resolveChapterDir(smallTitle, chapterNumber);
   }
-
-  const chapterDir = chapters
-    .sort((a, b) => {
-      const numA = parseFloat(a);
-      const numB = parseFloat(b);
-
-      if (isNaN(numA)) return 1;
-      if (isNaN(numB)) return -1;
-
-      return numA - numB;
-    })
-    .find((ch) => parseFloat(ch) === chapterNumber);
 
   if (!chapterDir) {
     return NextResponse.json({ error: "Capítulo não encontrado" }, { status: 404 });
   }
 
-  const chapterPath = path.join(titlePath, chapterDir);
+  const chapterPath = path.join(chapterRoot, chapterDir);
   try {
     let files = await readdir(chapterPath);
 

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { readFile, readdir } from "fs/promises";
 import path from "path";
 import mime from "mime";
+import { resolveChapterDir } from "@/utils/chapterDir.server";
 
 // Defina o caminho raiz onde os mangás estão armazenados
 const ROOT_PATH = "/mnt/d/manga";
@@ -32,17 +33,11 @@ export async function GET(
             // Thumbnail not found, proceed to fetch the first image from the chapter
         }
 
-        const chapters = await readdir(titlePath);
-        const chapterDir = chapters.sort((a, b) => {
-            const numA = parseFloat(a);
-            const numB = parseFloat(b);
-
-            if (isNaN(numA)) return 1;
-            if (isNaN(numB)) return -1;
-
-            return numA - numB;
-        }).find(ch => parseFloat(ch) === chapterNumber);
-        const chapterPath = path.join(titlePath, chapterDir!);
+        const chapterDir = await resolveChapterDir(titlePath, chapterNumber);
+        if (!chapterDir) {
+            return NextResponse.json({ error: "Capítulo não encontrado" }, { status: 404 });
+        }
+        const chapterPath = path.join(titlePath, chapterDir);
         try {
             // Lista todos os arquivos na pasta do capítulo
             let files = await readdir(chapterPath);

@@ -17,12 +17,35 @@ export async function GET(
     // Lê todos os diretórios dentro do título
     let chapters = await readdir(titlePath);
 
-    // Filtra e ordena os capítulos corretamente
-    const sortedChapters = chapters
-      .map(chap => ({ name: chap, num: parseFloat(chap) }))
-      .filter(chap => !isNaN(chap.num)) // Remove diretórios inválidos
-      .sort((a, b) => a.num - b.num)
-      .map(chap => chap.name); // Retorna apenas os nomes ordenados
+    // Filtra diretórios inválidos e agrupa por número (ex.: "566" e "0566" são o mesmo capítulo)
+    const byNum = new Map<number, string>();
+    const pageCount = new Map<string, number>();
+    for (const chap of chapters) {
+      const num = parseFloat(chap);
+      if (isNaN(num)) continue;
+
+      const current = byNum.get(num);
+      if (!current) {
+        byNum.set(num, chap);
+        continue;
+      }
+
+      // Duplicata numérica: mantém o diretório com mais páginas (mais completo)
+      if (!pageCount.has(current)) {
+        pageCount.set(current, (await readdir(path.join(titlePath, current))).length);
+      }
+      if (!pageCount.has(chap)) {
+        pageCount.set(chap, (await readdir(path.join(titlePath, chap))).length);
+      }
+      if ((pageCount.get(chap) ?? 0) > (pageCount.get(current) ?? 0)) {
+        byNum.set(num, chap);
+      }
+    }
+
+    // Ordena os capítulos numericamente únicos
+    const sortedChapters = [...byNum.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([, name]) => name);
 
     const modified: Record<string, number> = {};
     await Promise.all(

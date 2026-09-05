@@ -1,7 +1,7 @@
 services:
   manga-reader:
     build:
-      context: https://github.com/Dcrispim/manga-reader.git#main
+      context: .
       args:
         NEXT_PUBLIC_API_URL: http://localhost:3993
     image: manga-reader:latest
@@ -10,6 +10,6 @@ services:
     ports:
       - "0.0.0.0:3993:3993"
     volumes:
-      - D:/manga:/mnt/d/manga
-      - D:/manga-xl:/mnt/d/manga-xl
+      - /mnt/d/manga:/mnt/d/manga
+      - /mnt/d/manga-xl:/mnt/d/manga-xl
     restart: unless-stopped
