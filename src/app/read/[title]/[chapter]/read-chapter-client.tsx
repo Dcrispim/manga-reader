@@ -10,12 +10,14 @@ export default function ReadChapterClient({
   nextChapter,
   prevChapter,
   currentChapter,
+  isOriginal,
 }: {
   images: { images: string[] }
   title: string
   nextChapter: string | null
   prevChapter: string | null
   currentChapter: string
+  isOriginal: boolean
 }) {
   const [zoom, setZoom] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -37,7 +39,15 @@ export default function ReadChapterClient({
         currentChapter={currentChapter}
         setZoom={setZoom}
       />
-      <ZoomHandler images={images} title={title} nextChapter={nextChapter} zoom={zoom} setZoom={setZoom} />
+      <ZoomHandler
+        images={images}
+        title={title}
+        currentChapter={currentChapter}
+        nextChapter={nextChapter}
+        zoom={zoom}
+        setZoom={setZoom}
+        isOriginal={isOriginal}
+      />
     </>
   )
 }

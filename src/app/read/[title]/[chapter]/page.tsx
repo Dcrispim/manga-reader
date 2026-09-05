@@ -1,6 +1,4 @@
 import { fetchData } from "@/services/fetch";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import ReadChapterClient from "./read-chapter-client";
 import { getNextChapter } from "@/utils/utils.server";
 import SidebarDrawer from "@/components/SidebarDrawer";
@@ -50,32 +48,13 @@ export default async function ReadPage({
   return (
     <div className="flex flex-row w-full h-[100vh] pb-1 justify-between">
       <div className="flex flex-col w-full h-full">
-        <div className="flex flex-row w-full justify-end p-2 gap-2">
-          {isOriginal ? (
-            <Link
-              href={{ pathname: `/read/${title}/${chapter}` }}
-              scroll={false}
-            >
-              <Button variant="outline">Ver upscalada</Button>
-            </Link>
-          ) : (
-            <Link
-              href={{
-                pathname: `/read/${title}/${chapter}`,
-                query: { original: "true" },
-              }}
-              scroll={false}
-            >
-              <Button variant="outline">Ver original</Button>
-            </Link>
-          )}
-        </div>
         <ReadChapterClient
           images={images}
           title={title}
           nextChapter={nextChapter ? nextChapter.toString() : null}
           prevChapter={prevChapter ? prevChapter.toString() : null}
           currentChapter={chapter}
+          isOriginal={isOriginal}
         />
       </div>
       <SidebarDrawer
