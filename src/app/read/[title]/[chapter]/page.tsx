@@ -3,6 +3,7 @@ import ReadChapterClient from "./read-chapter-client";
 import { getNextChapter, getSkippedChapterCount } from "@/utils/utils.server";
 import SidebarDrawer from "@/components/SidebarDrawer";
 import NextChapterNavigationProvider from "./next-chapter-navigation";
+import ImageDeformProvider from "./image-deform";
 
 const getPreviousChapter = (
   currentChapter: string,
@@ -52,24 +53,26 @@ export default async function ReadPage({
       nextChapterUrl={handleNavigation("next")}
       skippedChapters={skippedChapters}
     >
-      <div className="flex flex-row w-full h-[100vh] pb-1 justify-between">
-        <div className="flex flex-col w-full h-full">
-          <ReadChapterClient
-            images={images}
+      <ImageDeformProvider title={title} chapter={chapter}>
+        <div className="flex flex-row w-full h-[100vh] pb-1 justify-between">
+          <div className="flex flex-col w-full h-full">
+            <ReadChapterClient
+              images={images}
+              title={title}
+              prevChapter={prevChapter ? prevChapter.toString() : null}
+              currentChapter={chapter}
+              isOriginal={isOriginal}
+            />
+          </div>
+          <SidebarDrawer
             title={title}
-            prevChapter={prevChapter ? prevChapter.toString() : null}
-            currentChapter={chapter}
-            isOriginal={isOriginal}
+            chapter={chapter}
+            chapters={titleInfos.chapters}
+            nextUrl={handleNavigation("next")}
+            prevUrl={handleNavigation("prev")}
           />
         </div>
-        <SidebarDrawer
-          title={title}
-          chapter={chapter}
-          chapters={titleInfos.chapters}
-          nextUrl={handleNavigation("next")}
-          prevUrl={handleNavigation("prev")}
-        />
-      </div>
+      </ImageDeformProvider>
     </NextChapterNavigationProvider>
   );
 }

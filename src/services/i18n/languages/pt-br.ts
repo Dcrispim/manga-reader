@@ -59,6 +59,8 @@ const ptBr = {
       Chapter: 'Capítulo',
       Connect: 'Conectar',
       Settings: 'Configurações',
+      'Horizontal deform': 'Deformação horizontal',
+      'Vertical deform': 'Deformação vertical',
       'Sync Up': 'Gerar código',
       'Sync In': 'Usar código',
       'Sync Up description': 'Gere um código para conectar este dispositivo e sincronizar seu histórico de leitura em outros aparelhos.',

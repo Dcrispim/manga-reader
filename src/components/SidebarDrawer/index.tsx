@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import i18n from '@/services/i18n'
 import GridView from '@/components/GridView'
-import Connect from '@/components/SidebarDrawer/Connect'
+import ConfigSection from '@/components/SidebarDrawer/ConfigSection'
 import { cn } from '@/lib/utils'
 import { useNextChapterNavigation } from '@/app/read/[title]/[chapter]/next-chapter-navigation'
 
@@ -101,7 +101,7 @@ export default function SidebarDrawer({
           )}
         </div>
 
-        <Connect />
+        <ConfigSection showDeform={chapter !== '@local'} />
 
         <GridView chapters={chapters} title={title} chapter={chapter} />
       </div>
