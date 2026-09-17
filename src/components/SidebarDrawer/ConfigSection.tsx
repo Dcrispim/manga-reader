@@ -11,11 +11,14 @@ import { cn } from '@/lib/utils'
 import i18n from '@/services/i18n'
 import Connect from '@/components/SidebarDrawer/Connect'
 import ImageDeformSettings from '@/components/SidebarDrawer/ImageDeformSettings'
+import UpscaleSettings from '@/components/SidebarDrawer/UpscaleSettings'
 
 export default function ConfigSection({
   showDeform,
+  showUpscale,
 }: {
   showDeform: boolean
+  showUpscale: boolean
 }) {
   const [isOpen, setIsOpen] = useState(false)
 
@@ -32,6 +35,7 @@ export default function ConfigSection({
       <CollapsibleContent className="flex flex-col items-center w-full gap-3 pt-2">
         <Connect />
         {showDeform && <ImageDeformSettings />}
+        {showUpscale && <UpscaleSettings />}
       </CollapsibleContent>
     </Collapsible>
   )

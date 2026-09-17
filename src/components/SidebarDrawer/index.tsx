@@ -101,7 +101,7 @@ export default function SidebarDrawer({
           )}
         </div>
 
-        <ConfigSection showDeform={chapter !== '@local'} />
+        <ConfigSection showDeform={chapter !== '@local'} showUpscale={chapter !== '@local'} />
 
         <GridView chapters={chapters} title={title} chapter={chapter} />
       </div>
