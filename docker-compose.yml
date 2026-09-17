@@ -7,6 +7,13 @@ services:
     image: manga-reader:latest
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:3993
+      # The container has no GPU/Vulkan access, so upscale jobs are handed
+      # off to scripts/upscale-worker.mjs running on the host. See
+      # src/services/upscale.ts and that script for the other half of this.
+      UPSCALE_WORKER_URL: http://host.docker.internal:4993/upscale
+      UPSCALE_WORKER_TOKEN: ${UPSCALE_WORKER_TOKEN}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "0.0.0.0:3993:3993"
     volumes:

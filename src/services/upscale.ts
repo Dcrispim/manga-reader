@@ -12,6 +12,13 @@ const XL_ROOT = '/mnt/d/manga-xl'
 // via realesrgan-ncnn-vulkan (anime model). See ~/cmd/manga-up.
 const UPSCALE_BIN = process.env.MANGA_UP_BIN || '/home/dcrispim/cmd/manga-up'
 
+// The container this app normally runs in has no GPU/Vulkan access, so it
+// can't run manga-up itself. When set, jobs are dispatched over HTTP to
+// scripts/upscale-worker.mjs running on the host instead of spawning
+// manga-up locally. See that script for the other half of this.
+const UPSCALE_WORKER_URL = process.env.UPSCALE_WORKER_URL
+const UPSCALE_WORKER_TOKEN = process.env.UPSCALE_WORKER_TOKEN
+
 // Lives alongside the other app-managed dot-directories (.search, .thumb,
 // .binds) inside the library mount, not in the repo.
 const STATE_DIR = path.join(MANGA_ROOT, '.upscale')
@@ -148,6 +155,31 @@ async function drain() {
 
 function runJob(job: QueuedJob): Promise<void> {
   markProcessing(job.key)
+  return UPSCALE_WORKER_URL ? runJobViaWorker(job) : runJobLocally(job)
+}
+
+async function runJobViaWorker(job: QueuedJob): Promise<void> {
+  try {
+    const resp = await fetch(UPSCALE_WORKER_URL!, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(UPSCALE_WORKER_TOKEN ? { Authorization: `Bearer ${UPSCALE_WORKER_TOKEN}` } : {}),
+      },
+      body: JSON.stringify({ title: job.title, chapterDir: job.chapterDir }),
+    })
+    if (resp.ok) {
+      markDone(job.key)
+      return
+    }
+    const data = (await resp.json().catch(() => null)) as { error?: string } | null
+    markError(job.key, data?.error || `upscale worker responded ${resp.status}`)
+  } catch (err) {
+    markError(job.key, err instanceof Error ? err.message : String(err))
+  }
+}
+
+function runJobLocally(job: QueuedJob): Promise<void> {
   return new Promise((resolve) => {
     const child = spawn(UPSCALE_BIN, [job.title, job.chapterDir], { stdio: ['ignore', 'ignore', 'pipe'] })
     let stderr = ''
