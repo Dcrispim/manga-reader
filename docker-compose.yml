@@ -14,6 +14,11 @@ services:
       UPSCALE_WORKER_TOKEN: ${UPSCALE_WORKER_TOKEN}
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    # host.docker.internal always resolves to the default bridge's gateway
+    # (docker0), so the container needs to be on that same network — a
+    # compose-managed project network would sit on a different bridge and
+    # the traffic would have to hop between the two.
+    network_mode: bridge
     ports:
       - "0.0.0.0:3993:3993"
     volumes:
