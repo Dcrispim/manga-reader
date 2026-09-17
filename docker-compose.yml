@@ -1,7 +1,7 @@
 services:
   manga-reader:
     build:
-      context: https://github.com/Dcrispim/manga-reader.git#stable/1.0.1
+      context: .
       args:
         NEXT_PUBLIC_API_URL: http://localhost:3993
     image: manga-reader:latest
