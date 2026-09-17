@@ -1,9 +1,14 @@
 "use client"
-import { useEffect, type Dispatch, type SetStateAction } from 'react';
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction, type UIEvent } from 'react';
 import Link from 'next/link';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import ImageGallery from './ImageGallery';
+
+// Below this scrollTop the bar always shows, regardless of direction — so it
+// doesn't hide right at the top of the chapter after a tiny downward nudge.
+const ALWAYS_VISIBLE_SCROLL_TOP = 10
 
 
 const SCROLL_PERCENT_MIN = 10
@@ -36,6 +41,20 @@ export default function ZoomHandler({
     setZoom(value[0]);
   };
 
+  const [toolbarVisible, setToolbarVisible] = useState(true)
+  const lastScrollTop = useRef(0)
+
+  const handleScroll = (event: UIEvent<HTMLDivElement>) => {
+    const scrollTop = event.currentTarget.scrollTop
+
+    if (scrollTop < ALWAYS_VISIBLE_SCROLL_TOP || scrollTop < lastScrollTop.current) {
+      setToolbarVisible(true)
+    } else if (scrollTop > lastScrollTop.current) {
+      setToolbarVisible(false)
+    }
+    lastScrollTop.current = scrollTop
+  }
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const el = event.target as HTMLElement | null
@@ -57,8 +76,13 @@ export default function ZoomHandler({
   }, [])
 
   return (
-    <div className="h-screen overflow-y-scroll w-full justify-center scroll-m-0 zoom">
-      <div className="flex flex-row items-center w-full px-4 py-2 gap-4">
+    <div className="relative h-screen w-full">
+      <div
+        className={cn(
+          'absolute top-0 left-0 right-0 z-40 flex flex-row items-center w-full px-4 py-2 gap-4 bg-background/90 backdrop-blur border-b border-border transition-transform duration-300',
+          toolbarVisible ? 'translate-y-0' : '-translate-y-full'
+        )}
+      >
         <div className="flex-1">
           <label className="block text-center">Zoom</label>
           <Slider
@@ -91,7 +115,12 @@ export default function ZoomHandler({
           )
         )}
       </div>
-      <ImageGallery images={images.images} zoom={zoom} />
+      <div
+        className="h-screen overflow-y-scroll w-full justify-center scroll-m-0 zoom"
+        onScroll={handleScroll}
+      >
+        <ImageGallery images={images.images} zoom={zoom} />
+      </div>
     </div>
   );
 }
