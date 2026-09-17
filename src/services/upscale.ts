@@ -1,10 +1,16 @@
 import Database from 'better-sqlite3'
 import { mkdirSync } from 'fs'
-import { readdir } from 'fs/promises'
+import { readdir, rm, stat } from 'fs/promises'
 import { spawn } from 'child_process'
 import path from 'path'
 import mime from 'mime'
 import { resolveChapterDir } from '@/utils/chapterDir.server'
+
+// Upscaled pages are much larger than the originals, so xl copies are kept
+// per title on a rolling basis rather than indefinitely — once a title
+// would have more than this many chapters upscaled or in flight, the
+// least-recently-finished one is evicted to make room.
+const CHAPTER_BUFFER_PER_TITLE = 10
 
 const MANGA_ROOT = '/mnt/d/manga'
 const XL_ROOT = '/mnt/d/manga-xl'
@@ -208,6 +214,56 @@ function chapterPaths(title: string, chapterDir: string) {
   }
 }
 
+async function listXlChapterDirs(title: string): Promise<string[]> {
+  const titlePath = path.join(XL_ROOT, title)
+  const names = await readdir(titlePath).catch(() => [] as string[])
+  const dirs = await Promise.all(
+    names.map(async (name) => {
+      const info = await stat(path.join(titlePath, name)).catch(() => null)
+      return info?.isDirectory() ? name : null
+    })
+  )
+  return dirs.filter((name): name is string => name !== null)
+}
+
+// mtime rather than the DB's finished_at, so this still works for xl copies
+// that predate a DB row (produced manually, or before this endpoint existed).
+async function oldestXlChapterDir(title: string, excluding: string): Promise<string | null> {
+  const dirs = (await listXlChapterDirs(title)).filter((dir) => dir !== excluding)
+  if (dirs.length === 0) return null
+
+  const withMtime = await Promise.all(
+    dirs.map(async (dir) => {
+      const info = await stat(path.join(XL_ROOT, title, dir)).catch(() => null)
+      return { dir, mtimeMs: info?.mtimeMs ?? 0 }
+    })
+  )
+  withMtime.sort((a, b) => a.mtimeMs - b.mtimeMs)
+  return withMtime[0].dir
+}
+
+async function evictChapter(title: string, chapterDir: string): Promise<void> {
+  await rm(path.join(XL_ROOT, title, chapterDir), { recursive: true, force: true })
+  getDb().prepare('DELETE FROM upscale_jobs WHERE key = ?').run(jobKey(title, chapterDir))
+}
+
+// Keeps at most CHAPTER_BUFFER_PER_TITLE chapters of a title upscaled or
+// in flight at once, evicting the least-recently-finished one(s) as needed
+// to make room for the chapter about to be enqueued.
+async function enforceTitleBuffer(title: string, incomingChapterDir: string): Promise<void> {
+  const inProgress = getDb()
+    .prepare(`SELECT COUNT(*) as count FROM upscale_jobs WHERE title = @title AND status IN ('pending', 'processing')`)
+    .get({ title }) as { count: number }
+
+  let total = (await listXlChapterDirs(title)).length + inProgress.count + 1
+  while (total > CHAPTER_BUFFER_PER_TITLE) {
+    const oldest = await oldestXlChapterDir(title, incomingChapterDir)
+    if (!oldest) break
+    await evictChapter(title, oldest)
+    total--
+  }
+}
+
 async function resolveChapter(
   title: string,
   chapter: string
@@ -249,6 +305,8 @@ export async function requestChapterUpscale(
     upsertDone(key, title, chapterDir)
     return { status: 'done', alreadyUpscaled: true }
   }
+
+  await enforceTitleBuffer(title, chapterDir)
 
   upsertPending(key, title, chapterDir)
   enqueue({ key, title, chapterDir })
