@@ -131,32 +131,44 @@ interface QueuedJob {
   chapterDir: string
 }
 
-// The upscaler is GPU-bound, so jobs run one at a time. The Set guards
-// against the same chapter being queued twice while it's already running or
-// waiting its turn.
-const queued = new Set<string>()
-const queue: QueuedJob[] = []
-let draining = false
+// The upscaler is GPU-bound: at most one job runs at a time, and at most one
+// more waits behind it. A newer request replaces whatever was waiting
+// (rather than queueing up) — if you've already moved on to chapter 102,
+// chapter 101 finishing later doesn't help, so 103 bumps 102 out instead of
+// piling up behind it. The currently-running job is never interrupted.
+let currentJob: QueuedJob | null = null
+let waitingJob: QueuedJob | null = null
 
 function enqueue(job: QueuedJob) {
-  if (queued.has(job.key)) return
-  queued.add(job.key)
-  queue.push(job)
-  void drain()
+  if (currentJob?.key === job.key) return
+
+  if (currentJob === null) {
+    startJob(job)
+    return
+  }
+
+  if (waitingJob && waitingJob.key !== job.key) {
+    discardWaitingJob(waitingJob)
+  }
+  waitingJob = job
 }
 
-async function drain() {
-  if (draining) return
-  draining = true
-  try {
-    let job: QueuedJob | undefined
-    while ((job = queue.shift())) {
-      await runJob(job)
-      queued.delete(job.key)
+function startJob(job: QueuedJob) {
+  currentJob = job
+  void runJob(job).then(() => {
+    currentJob = null
+    if (waitingJob) {
+      const next = waitingJob
+      waitingJob = null
+      startJob(next)
     }
-  } finally {
-    draining = false
-  }
+  })
+}
+
+// The waiting job never got a chance to run, so undo its pending row —
+// otherwise a status check would keep reporting it as queued when it isn't.
+function discardWaitingJob(job: QueuedJob) {
+  getDb().prepare('DELETE FROM upscale_jobs WHERE key = ?').run(job.key)
 }
 
 function runJob(job: QueuedJob): Promise<void> {
