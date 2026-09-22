@@ -20,6 +20,7 @@ export default function ImageGallery({
         <ChapterImage
           key={index}
           src={src}
+          index={index}
           alt={`Page ${index + 1}`}
           width={1200 * zoom}
           height={1200 * zoom}

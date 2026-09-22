@@ -62,6 +62,7 @@ const ptBr = {
       'Horizontal deform': 'Deformação horizontal',
       'Vertical deform': 'Deformação vertical',
       'Upscale next chapter': 'Melhorar próximo capítulo',
+      'Download next chapter automatically': 'Baixar próximo capítulo automaticamente',
       'Sync Up': 'Gerar código',
       'Sync In': 'Usar código',
       'Sync Up description': 'Gere um código para conectar este dispositivo e sincronizar seu histórico de leitura em outros aparelhos.',

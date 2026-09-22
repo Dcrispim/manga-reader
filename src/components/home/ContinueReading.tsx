@@ -7,6 +7,7 @@ import { LucideChevronLeft, LucideChevronRight, LucideHistory } from 'lucide-rea
 import { getChapters, getHistory, setChapters, setHistory } from '@/utils/history'
 import { BIND_CODE_KEY, BindData, mergeBindData } from '@/utils/bind'
 import { fetchData } from '@/services/fetch'
+import { offlineAwareLinkClick } from '@/utils/offline/navigation'
 
 interface ReadingProgress {
   id: string
@@ -118,6 +119,7 @@ export default function ContinueReading() {
             <Link
               key={item.id}
               href={item.link}
+              onClick={(e) => offlineAwareLinkClick(e, item.link)}
               className="flex-shrink-0 group/card"
             >
               <div className="relative w-36 md:w-44 aspect-[2/3] rounded-md overflow-hidden" aria-label={`Lido por ultimo em ${new Date(item.lastRead).toLocaleDateString()}`}>

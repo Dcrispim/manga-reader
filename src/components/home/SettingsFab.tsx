@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog'
 import Connect from '@/components/SidebarDrawer/Connect'
 import RebuildSearchIndex from '@/components/home/RebuildSearchIndex'
+import OfflineLimitsSettings from '@/components/offline/OfflineLimitsSettings'
 import i18n from '@/services/i18n'
 
 export default function SettingsFab() {
@@ -32,6 +33,7 @@ export default function SettingsFab() {
         </DialogHeader>
         <Connect />
         <RebuildSearchIndex />
+        <OfflineLimitsSettings />
       </DialogContent>
     </Dialog>
   )

@@ -11,6 +11,8 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { isOffline } from '@/utils/offline/navigation'
+import { useChapterReader } from './chapter-reader-context'
 
 type NextChapterNavigationContextValue = {
   hasNext: boolean
@@ -31,34 +33,41 @@ export function useNextChapterNavigation() {
 }
 
 export default function NextChapterNavigationProvider({
-  nextChapterUrl,
   skippedChapters,
   children,
 }: {
-  nextChapterUrl: string | null
   skippedChapters: number
   children: ReactNode
 }) {
   const router = useRouter()
+  const { title, nextChapter, goToChapter } = useChapterReader()
   const [isConfirmOpen, setIsConfirmOpen] = useState(false)
 
+  const navigate = () => {
+    if (!nextChapter) return
+    // Offline, a client-side transition (a fetch for RSC data) fails
+    // silently — swap chapters in place instead, in the same mounted page.
+    if (isOffline()) goToChapter(nextChapter)
+    else router.push(`/read/${title}/${nextChapter}`)
+  }
+
   const goToNextChapter = () => {
-    if (!nextChapterUrl) return
+    if (!nextChapter) return
     if (skippedChapters > 0) {
       setIsConfirmOpen(true)
       return
     }
-    router.push(nextChapterUrl)
+    navigate()
   }
 
   const confirmSkip = () => {
     setIsConfirmOpen(false)
-    if (nextChapterUrl) router.push(nextChapterUrl)
+    navigate()
   }
 
   return (
     <NextChapterNavigationContext.Provider
-      value={{ hasNext: Boolean(nextChapterUrl), goToNextChapter }}
+      value={{ hasNext: Boolean(nextChapter), goToNextChapter }}
     >
       {children}
       <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>

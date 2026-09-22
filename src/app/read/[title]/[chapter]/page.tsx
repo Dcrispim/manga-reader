@@ -5,20 +5,7 @@ import SidebarDrawer from "@/components/SidebarDrawer";
 import NextChapterNavigationProvider from "./next-chapter-navigation";
 import ImageDeformProvider from "./image-deform";
 import UpscaleSettingsProvider from "./upscale-settings";
-
-const getPreviousChapter = (
-  currentChapter: string,
-  chapters: number[],
-): number | "" => {
-  const sortedChapters = chapters?.sort((a, b) => a - b);
-  const currentIndex = sortedChapters.indexOf(parseFloat(currentChapter));
-
-  if (currentIndex === -1 || currentIndex === sortedChapters.length - 1) {
-    return ""; // Return an empty string or handle the end of the list case
-  }
-
-  return sortedChapters[currentIndex - 1];
-};
+import ChapterReaderProvider from "./chapter-reader-context";
 
 export default async function ReadPage({
   params,
@@ -34,53 +21,35 @@ export default async function ReadPage({
   );
   const titleInfos = await fetchData(`/api/read/${title}`);
   const nextChapter = getNextChapter(chapter, titleInfos?.chapters);
-  const prevChapter = getPreviousChapter(
-    chapter,
-    titleInfos?.chapters.map((c: string) => parseFloat(c)),
-  );
   const skippedChapters = getSkippedChapterCount(chapter, nextChapter);
 
-  const handleNavigation = (direction: "next" | "prev") => {
-    if (direction === "next" && nextChapter) {
-      return `/read/${title}/${nextChapter}`;
-    } else if (direction === "prev" && prevChapter) {
-      return `/read/${title}/${prevChapter}`;
-    }
-    return null;
-  };
-
   return (
-    <NextChapterNavigationProvider
-      nextChapterUrl={handleNavigation("next")}
-      skippedChapters={skippedChapters}
+    <ChapterReaderProvider
+      title={title}
+      initialChapter={chapter}
+      initialImages={images.images || []}
+      allChapters={titleInfos?.chapters || []}
     >
-      <ImageDeformProvider title={title} chapter={chapter}>
-        <UpscaleSettingsProvider
-          title={title}
-          chapter={chapter}
-          nextChapter={nextChapter ? nextChapter.toString() : null}
-          isOriginal={isOriginal}
-        >
-          <div className="flex flex-row w-full h-[100vh] pb-1 justify-between">
-            <div className="flex flex-col w-full h-full">
-              <ReadChapterClient
-                images={images}
-                title={title}
-                prevChapter={prevChapter ? prevChapter.toString() : null}
-                currentChapter={chapter}
-                isOriginal={isOriginal}
-              />
+      <NextChapterNavigationProvider skippedChapters={skippedChapters}>
+        <ImageDeformProvider title={title} chapter={chapter}>
+          <UpscaleSettingsProvider
+            title={title}
+            chapter={chapter}
+            nextChapter={nextChapter ? nextChapter.toString() : null}
+            isOriginal={isOriginal}
+          >
+            <div className="flex flex-row w-full h-[100vh] pb-1 justify-between">
+              <div className="flex flex-col w-full h-full">
+                <ReadChapterClient
+                  title={title}
+                  isOriginal={isOriginal}
+                />
+              </div>
+              <SidebarDrawer title={title} chapters={titleInfos.chapters} />
             </div>
-            <SidebarDrawer
-              title={title}
-              chapter={chapter}
-              chapters={titleInfos.chapters}
-              nextUrl={handleNavigation("next")}
-              prevUrl={handleNavigation("prev")}
-            />
-          </div>
-        </UpscaleSettingsProvider>
-      </ImageDeformProvider>
-    </NextChapterNavigationProvider>
+          </UpscaleSettingsProvider>
+        </ImageDeformProvider>
+      </NextChapterNavigationProvider>
+    </ChapterReaderProvider>
   );
 }

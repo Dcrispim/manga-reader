@@ -5,6 +5,7 @@ import Link from 'next/link'
 import type { Title } from '@/types/api'
 import { Button } from '@/components/ui/button'
 import { LucidePlay, LucideInfo } from 'lucide-react'
+import { offlineAwareLinkClick } from '@/utils/offline/navigation'
 
 interface HeroProps {
   title: Title
@@ -79,7 +80,7 @@ export default function Hero({ title:initialTitle, allTitles = [] }: HeroProps) 
         </p>
 
         <div className="flex gap-4">
-          <Link href={readLink}>
+          <Link href={readLink} onClick={(e) => offlineAwareLinkClick(e, readLink)}>
             <Button className="bg-white text-black hover:bg-gray-200 gap-2">
               <LucidePlay size={20} />
               {savedChapter ? `Continuar Cap. ${savedChapter}` : 'Ler agora'}

@@ -13,6 +13,20 @@ export const getNextChapter = (
     return sortedChapters[currentIndex + 1]
   }
 
+export const getPreviousChapter = (
+  currentChapter: string,
+  chapters: number[]
+): number | '' => {
+  const sortedChapters = [...chapters].sort((a, b) => a - b)
+  const currentIndex = sortedChapters.indexOf(parseFloat(currentChapter))
+
+  if (currentIndex <= 0) {
+    return ''
+  }
+
+  return sortedChapters[currentIndex - 1]
+}
+
 export const getSkippedChapterCount = (
   currentChapter: string,
   nextChapter: number | ''

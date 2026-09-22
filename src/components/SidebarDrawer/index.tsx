@@ -9,22 +9,19 @@ import GridView from '@/components/GridView'
 import ConfigSection from '@/components/SidebarDrawer/ConfigSection'
 import { cn } from '@/lib/utils'
 import { useNextChapterNavigation } from '@/app/read/[title]/[chapter]/next-chapter-navigation'
+import { useChapterReader } from '@/app/read/[title]/[chapter]/chapter-reader-context'
 
 export default function SidebarDrawer({
   title,
-  chapter,
   chapters,
-  nextUrl,
-  prevUrl,
 }: {
   title: string
-  chapter: string
   chapters: string[]
-  nextUrl: string | null
-  prevUrl: string | null
 }) {
   const [isOpen, setIsOpen] = useState(false)
-  const { goToNextChapter } = useNextChapterNavigation()
+  const { goToNextChapter, hasNext } = useNextChapterNavigation()
+  const { currentChapter, prevChapter, goToChapter } = useChapterReader()
+  const chapter = currentChapter
 
   useEffect(() => {
     const isLarge = window.innerWidth >= 1024
@@ -77,7 +74,7 @@ export default function SidebarDrawer({
         </button>
 
         <div className="flex flex-col items-center w-full px-4 gap-2">
-          {chapter !== '@local' && nextUrl && (
+          {chapter !== '@local' && hasNext && (
             <Button className="w-full" onClick={goToNextChapter}>
               <label>{i18n('Next')}</label>
             </Button>
@@ -92,18 +89,16 @@ export default function SidebarDrawer({
               <label>{i18n('Home')}</label>
             </Button>
           </Link>
-          {chapter !== '@local' && prevUrl && (
-            <Link className="w-full" href={prevUrl}>
-              <Button className="w-full">
-                <label>{i18n('Previous')}</label>
-              </Button>
-            </Link>
+          {chapter !== '@local' && prevChapter && (
+            <Button className="w-full" onClick={() => goToChapter(prevChapter)}>
+              <label>{i18n('Previous')}</label>
+            </Button>
           )}
         </div>
 
         <ConfigSection showDeform={chapter !== '@local'} showUpscale={chapter !== '@local'} />
 
-        <GridView chapters={chapters} title={title} chapter={chapter} />
+        <GridView chapters={chapters} />
       </div>
     </>
   )

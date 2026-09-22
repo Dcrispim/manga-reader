@@ -1,10 +1,10 @@
 import type { Title } from '@/types/api'
 import { getCategories, getMetadata, getTitlesByCategory } from '@/services/metadata'
 import Hero from '@/components/home/Hero'
-import SectionCarousel from '@/components/home/SectionCarousel'
 import ContinueReading from '@/components/home/ContinueReading'
 import SettingsFab from '@/components/home/SettingsFab'
 import SpotlightSearch from '@/components/home/SpotlightSearch'
+import HomeSections from '@/components/home/HomeSections'
 
 export default async function Home() {
   const categories = await getCategories()
@@ -30,13 +30,7 @@ export default async function Home() {
       <SettingsFab />
       <SpotlightSearch />
       <ContinueReading />
-      {categories.filter((category) => category.count > 2).map((category) => (
-        <SectionCarousel
-          key={category.id}
-          title={`${category.name}${category.count ? ` (${category.count})` : ''}`}
-          titles={titlesByCategory[category.id] ?? []}
-        />
-      ))}
+      <HomeSections categories={categories} titlesByCategory={titlesByCategory} />
     </div>
   )
 }

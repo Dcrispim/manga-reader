@@ -5,8 +5,11 @@ import Link from 'next/link'
 import i18n from '@/services/i18n'
 import { cn } from '@/lib/utils'
 import { getHistory, TitleHistory } from '@/utils/history'
+import OfflineBadgeDot from '@/components/offline/OfflineBadgeDot'
+import { useChapterReader } from '@/app/read/[title]/[chapter]/chapter-reader-context'
 
-export default function GridView({ chapters, title, chapter }: { chapters: string[], title: string, chapter: string }) {
+export default function GridView({ chapters }: { chapters: string[] }) {
+    const { title, currentChapter: chapter, goToChapter } = useChapterReader()
     const [gridView, setGridView] = useState<'chapters' | 'volume'>('chapters')
     const [selectedVolume, setSelectedVolume] = useState<number | null>(null)
     const [tabGrid, setTabGrid] = useState<number | null>(null)
@@ -88,10 +91,19 @@ export default function GridView({ chapters, title, chapter }: { chapters: strin
                     className="grid grid-cols-[repeat(auto-fit,_minmax(3rem,_1fr))] gap-3 w-full px-5 h-96 overflow-y-scroll"
                 >
                     {(selectedVolume ? chapters.filter((chap, index) => parseFloat(chap) >= selectedVolume * 100 && parseFloat(chap) < (selectedVolume + 1) * 100) : chapters).map((chap: string) => (
-                        <Link key={chap} href={`/read/${title}/${chap}`}>
+                        <Link
+                            key={chap}
+                            href={`/read/${title}/${chap}`}
+                            onClick={(e) => {
+                                e.preventDefault()
+                                goToChapter(chap)
+                            }}
+                        >
                             <div
                                 ref={chap === chapter ? currentChapterRef : null}
+                                className="relative"
                             >
+                                <OfflineBadgeDot title={title} chapter={chap} />
                                 <Button
                                     variant={'outline'}
                                     className={cn(
@@ -132,7 +144,14 @@ export default function GridView({ chapters, title, chapter }: { chapters: strin
                     <div className="flex flex-col-reverse gap-2">
                         {lastChapters.map((chap) => (
                             chap !== chapter && <div key={chap}>
-                                <Link href={`/read/${title}/${chap}`} className="text-blue-500 hover:underline">
+                                <Link
+                                    href={`/read/${title}/${chap}`}
+                                    onClick={(e) => {
+                                        e.preventDefault()
+                                        goToChapter(chap)
+                                    }}
+                                    className="text-blue-500 hover:underline"
+                                >
                                     {i18n(`Chapter ${parseFloat(chap)}`)}
                                 </Link>
                             </div>

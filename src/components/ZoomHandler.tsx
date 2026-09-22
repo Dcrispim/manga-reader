@@ -29,6 +29,7 @@ export default function ZoomHandler({
   zoom,
   setZoom,
   isOriginal,
+  hideOriginalToggle,
 }: {
   images: { images: string[] }
   title?: string
@@ -36,6 +37,7 @@ export default function ZoomHandler({
   zoom: number
   setZoom: Dispatch<SetStateAction<number>>
   isOriginal?: boolean
+  hideOriginalToggle?: boolean
 }) {
   const handleZoomChange = (value: number[]) => {
     setZoom(value[0]);
@@ -94,7 +96,7 @@ export default function ZoomHandler({
             onValueChange={handleZoomChange}
           />
         </div>
-        {title && currentChapter && (
+        {title && currentChapter && !hideOriginalToggle && (
           isOriginal ? (
             <Link
               href={{ pathname: `/read/${title}/${currentChapter}` }}

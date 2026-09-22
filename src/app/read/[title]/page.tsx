@@ -7,6 +7,9 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { normalizeCategory } from "@/utils/categories";
 import { getChapters, getHistory } from "@/utils/history";
+import OfflineChapterButton from "@/components/offline/OfflineChapterButton";
+import { offlineAwareLinkClick } from "@/utils/offline/navigation";
+import { cacheTitleInfo, getCachedTitleInfo } from "@/utils/offline/titleCache";
 
 type Metadata = {
   categories: string[];
@@ -107,6 +110,7 @@ const TitlePage = () => {
   const [openedAt, setOpenedAt] = useState<Record<string, number>>({});
   const [activeVolume, setActiveVolume] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
+  const [thumbOverrideUrl, setThumbOverrideUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!title) return;
@@ -114,18 +118,44 @@ const TitlePage = () => {
     setContinueChapter(getChapters()[title] || null);
     setOpenedAt(getHistory()[title]?.openedAt || {});
 
-    fetch(`/api/read/${title}`)
-      .then((res) => res.json())
-      .then((data) => {
-        setChapters(data.chapters || []);
-        setModified(data.modified || {});
-      })
-      .catch(() => { });
+    let revokeUrl: string | null = null;
 
-    fetch(`/api/metadata/${title}`)
-      .then((res) => res.json())
-      .then((data) => setMetadata({ ...EMPTY_METADATA, ...data }))
-      .catch(() => { });
+    Promise.all([
+      fetch(`/api/read/${title}`).then((res) => {
+        if (!res.ok) throw new Error("chapters unavailable");
+        return res.json();
+      }),
+      fetch(`/api/metadata/${title}`).then((res) => {
+        if (!res.ok) throw new Error("metadata unavailable");
+        return res.json();
+      }),
+    ])
+      .then(([chapterData, metadataRes]) => {
+        setChapters(chapterData.chapters || []);
+        setModified(chapterData.modified || {});
+        setMetadata({ ...EMPTY_METADATA, ...metadataRes });
+        // Keeps the offline cache fresh from normal browsing, not just from
+        // explicit chapter downloads.
+        cacheTitleInfo(title, { chapters: chapterData.chapters, modified: chapterData.modified, metadata: metadataRes });
+      })
+      .catch(() => {
+        // Offline, or the server is unreachable — fall back to whatever was
+        // cached the last time this title was browsed or downloaded.
+        getCachedTitleInfo(title).then((cached) => {
+          if (!cached) return;
+          setChapters(cached.chapters);
+          setModified(cached.modified);
+          setMetadata({ ...EMPTY_METADATA, ...cached.metadata });
+          if (cached.thumb) {
+            revokeUrl = URL.createObjectURL(cached.thumb);
+            setThumbOverrideUrl(revokeUrl);
+          }
+        });
+      });
+
+    return () => {
+      if (revokeUrl) URL.revokeObjectURL(revokeUrl);
+    };
   }, [title]);
 
   const volumes = useMemo(() => computeVolumes(chapters, metadata.volumes), [chapters, metadata.volumes]);
@@ -186,7 +216,19 @@ const TitlePage = () => {
         <section className="relative mt-5 p-6 md:p-9 rounded-2xl bg-card border border-border grid grid-cols-1 md:grid-cols-[200px_1fr] gap-8">
           <div>
             <div className="relative w-full aspect-[2/3] rounded-lg overflow-hidden border border-border shadow-lg">
-              <Image src={`/api/read/${title}/01/thumb`} alt={title} fill className="object-cover" sizes="200px" />
+              <Image
+                src={thumbOverrideUrl || `/api/read/${title}/01/thumb`}
+                alt={title}
+                fill
+                className="object-cover"
+                sizes="200px"
+                onError={() => {
+                  if (thumbOverrideUrl) return;
+                  getCachedTitleInfo(title).then((cached) => {
+                    if (cached?.thumb) setThumbOverrideUrl(URL.createObjectURL(cached.thumb));
+                  });
+                }}
+              />
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
               {metadata.thumbSource === "curated" ? "Capa oficial (.thumb)" : "Recorte automático · pág. 1 do cap. 1"}
@@ -215,6 +257,7 @@ const TitlePage = () => {
                 {primaryTarget ? (
                   <Link
                     href={`/read/${title}/${primaryTarget}`}
+                    onClick={(e) => offlineAwareLinkClick(e, `/read/${title}/${primaryTarget}`)}
                     className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
                   >
                     {continueChapter ? `Continuar no cap. ${continueChapter}` : "Começar a ler"}
@@ -306,6 +349,7 @@ const TitlePage = () => {
                   <span className="text-xs text-muted-foreground">Modificado em {formatDate(modified[selected])}</span>
                   <Link
                     href={`/read/${title}/${selected}`}
+                    onClick={(e) => offlineAwareLinkClick(e, `/read/${title}/${selected}`)}
                     className="mt-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
                   >
                     Ler capítulo {selected} <ArrowRight className="w-4 h-4" />
@@ -378,6 +422,7 @@ const TitlePage = () => {
                     <th className="text-left text-[10px] uppercase tracking-wide text-muted-foreground font-medium px-5 py-2 border-b border-border">Capítulo</th>
                     <th className="text-left text-[10px] uppercase tracking-wide text-muted-foreground font-medium px-5 py-2 border-b border-border">Status</th>
                     <th className="text-right text-[10px] uppercase tracking-wide text-muted-foreground font-medium px-5 py-2 border-b border-border">Modificado</th>
+                    <th className="text-center text-[10px] uppercase tracking-wide text-muted-foreground font-medium px-5 py-2 border-b border-border">Offline</th>
                     <th className="px-5 py-2 border-b border-border" />
                   </tr>
                 </thead>
@@ -410,8 +455,20 @@ const TitlePage = () => {
                             </span>
                           </td>
                           <td className="px-5 py-2.5 text-sm text-muted-foreground text-right tabular-nums">{formatDate(modified[chap])}</td>
+                          <td className="px-5 py-2.5" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex justify-center">
+                              <OfflineChapterButton title={title} chapter={chap} />
+                            </div>
+                          </td>
                           <td className="px-5 py-2.5 text-right">
-                            <Link href={`/read/${title}/${chap}`} onClick={(e) => e.stopPropagation()} className="text-muted-foreground hover:text-foreground">
+                            <Link
+                              href={`/read/${title}/${chap}`}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                offlineAwareLinkClick(e, `/read/${title}/${chap}`)
+                              }}
+                              className="text-muted-foreground hover:text-foreground"
+                            >
                               <ArrowRight className="w-4 h-4 inline" />
                             </Link>
                           </td>
@@ -420,7 +477,7 @@ const TitlePage = () => {
                     })
                   ) : (
                     <tr>
-                      <td colSpan={5} className="px-5 py-8 text-sm text-muted-foreground text-center italic">
+                      <td colSpan={6} className="px-5 py-8 text-sm text-muted-foreground text-center italic">
                         Nenhum capítulo encontrado.
                       </td>
                     </tr>

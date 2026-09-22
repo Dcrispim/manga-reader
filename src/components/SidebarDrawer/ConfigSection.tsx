@@ -12,6 +12,7 @@ import i18n from '@/services/i18n'
 import Connect from '@/components/SidebarDrawer/Connect'
 import ImageDeformSettings from '@/components/SidebarDrawer/ImageDeformSettings'
 import UpscaleSettings from '@/components/SidebarDrawer/UpscaleSettings'
+import OfflineAutoDownloadSwitch from '@/components/offline/OfflineAutoDownloadSwitch'
 
 export default function ConfigSection({
   showDeform,
@@ -36,6 +37,7 @@ export default function ConfigSection({
         <Connect />
         {showDeform && <ImageDeformSettings />}
         {showUpscale && <UpscaleSettings />}
+        {showDeform && <OfflineAutoDownloadSwitch />}
       </CollapsibleContent>
     </Collapsible>
   )
