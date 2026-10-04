@@ -2,9 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { access, mkdir, writeFile } from 'fs/promises'
 import path from 'path'
 import type { BindData, BindPayload } from '@/utils/bind'
-
-const ROOT_PATH = '/mnt/d/manga'
-const BINDS_PATH = path.join(ROOT_PATH, '.binds')
+import { BINDS_DIR } from '@/utils/paths.server'
 const CODE_CHARSET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 const CODE_LENGTH = 6
 
@@ -29,14 +27,14 @@ export async function POST(request: NextRequest) {
   try {
     const body: Partial<BindPayload> = await request.json().catch(() => ({}))
 
-    await mkdir(BINDS_PATH, { recursive: true })
+    await mkdir(BINDS_DIR, { recursive: true })
 
     let code = generateCode()
-    let filePath = path.join(BINDS_PATH, `${code}.json`)
+    let filePath = path.join(BINDS_DIR, `${code}.json`)
     let attempts = 0
     while ((await fileExists(filePath)) && attempts < 10) {
       code = generateCode()
-      filePath = path.join(BINDS_PATH, `${code}.json`)
+      filePath = path.join(BINDS_DIR, `${code}.json`)
       attempts++
     }
 

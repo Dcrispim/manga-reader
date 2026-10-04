@@ -3,16 +3,14 @@ import { mkdir, readFile, writeFile } from 'fs/promises'
 import path from 'path'
 import type { BindData, BindPayload } from '@/utils/bind'
 import { mergeBindData } from '@/utils/bind'
-
-const ROOT_PATH = '/mnt/d/manga'
-const BINDS_PATH = path.join(ROOT_PATH, '.binds')
+import { BINDS_DIR } from '@/utils/paths.server'
 
 function normalizeCode(code: string) {
   return code.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
 }
 
 function getBindPath(code: string) {
-  return path.join(BINDS_PATH, `${normalizeCode(code)}.json`)
+  return path.join(BINDS_DIR, `${normalizeCode(code)}.json`)
 }
 
 async function readBind(code: string): Promise<BindData | null> {
@@ -65,7 +63,7 @@ export async function POST(
       chapters: merged.chapters,
     }
 
-    await mkdir(BINDS_PATH, { recursive: true })
+    await mkdir(BINDS_DIR, { recursive: true })
     await writeFile(getBindPath(code), JSON.stringify(data, null, 2), 'utf-8')
 
     return NextResponse.json(data)

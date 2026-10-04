@@ -3,9 +3,7 @@ import path from "path";
 import mime from "mime";
 import { resolveChapterDir } from "@/utils/chapterDir.server";
 import { listSortedImages, readPage } from "@/services/xlSlices";
-
-const ROOT_PATH = "/mnt/d/manga-xl";
-const ROOT_PATH_SMALL = "/mnt/d/manga";
+import { MANGA_ROOT, MANGA_XL_ROOT } from "@/utils/paths.server";
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ title: string,chapter:string, index:string }> }
@@ -13,8 +11,8 @@ export async function GET(
   const { title: mangaTitle, chapter, index:indexPage } = await params;
   const chapterNumber = parseFloat(chapter);
 
-  const titlePath = path.join(ROOT_PATH, mangaTitle);
-  const smallTitle = path.join(ROOT_PATH_SMALL, mangaTitle);
+  const titlePath = path.join(MANGA_XL_ROOT, mangaTitle);
+  const smallTitle = path.join(MANGA_ROOT, mangaTitle);
 
   let chapterRoot = titlePath;
   let chapterDir = await resolveChapterDir(titlePath, chapterNumber);

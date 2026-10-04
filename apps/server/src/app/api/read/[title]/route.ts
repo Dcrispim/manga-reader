@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { readdir, stat } from "fs/promises";
 import path from "path";
-
-const ROOT_PATH = "/mnt/d/manga";
+import { MANGA_ROOT } from "@/utils/paths.server";
 
 export async function GET(
   _req: Request,
@@ -12,7 +11,7 @@ export async function GET(
 
   try {
     // Caminho do diretório do título
-    const titlePath = path.join(ROOT_PATH, mangaTitle);
+    const titlePath = path.join(MANGA_ROOT, mangaTitle);
 
     // Lê todos os diretórios dentro do título
     let chapters = await readdir(titlePath);

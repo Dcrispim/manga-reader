@@ -2,9 +2,7 @@ import { readdir, readFile, stat } from 'fs/promises'
 import path from 'path'
 import { cache } from 'react'
 import { normalizeCategory } from '@/utils/categories'
-
-const ROOT_PATH = '/mnt/d/manga'
-const META_PATH = path.join(ROOT_PATH, '.meta')
+import { MANGA_ROOT, META_DIR } from '@/utils/paths.server'
 
 export interface TitleInfo {
   id: string
@@ -89,7 +87,7 @@ function parseMetadataFile(content: string): MetadataContent {
 
 export async function readMetadata(titleName: string): Promise<MetadataContent> {
   try {
-    const metadataPath = path.join(META_PATH, `${titleName}.metadata`)
+    const metadataPath = path.join(META_DIR, `${titleName}.metadata`)
     const content = await readFile(metadataPath, 'utf-8')
     return parseMetadataFile(content)
   } catch {
@@ -102,13 +100,13 @@ export async function readMetadata(titleName: string): Promise<MetadataContent> 
 // manga library on disk.
 export const getAllTitles = cache(async (): Promise<TitleInfo[]> => {
   try {
-    const titles = await readdir(ROOT_PATH, { withFileTypes: true })
+    const titles = await readdir(MANGA_ROOT, { withFileTypes: true })
 
     const titleList = await Promise.all(
       titles
         .filter((dirent) => dirent.isDirectory() && !dirent.name.startsWith('.'))
         .map(async (dirent) => {
-          const titlePath = path.join(ROOT_PATH, dirent.name)
+          const titlePath = path.join(MANGA_ROOT, dirent.name)
           const caps = await readdir(titlePath, { withFileTypes: true })
           const stats = await stat(titlePath)
           const metadata = await readMetadata(dirent.name)

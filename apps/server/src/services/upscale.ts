@@ -5,16 +5,14 @@ import { spawn } from 'child_process'
 import path from 'path'
 import { resolveChapterDir } from '@/utils/chapterDir.server'
 import { clearChapterSlices, ensureChapterSlices, listSortedImages } from '@/services/xlSlices'
+import { MANGA_ROOT, MANGA_XL_ROOT } from '@/utils/paths.server'
 
 // Upscaled pages are much larger than the originals, so xl copies are kept
 // per title on a rolling basis rather than indefinitely — once a title
 // would have more than this many chapters upscaled or in flight, the
 // least-recently-finished one is evicted to make room.
 const CHAPTER_BUFFER_PER_TITLE = 10
-
-const MANGA_ROOT = '/mnt/d/manga'
-const XL_ROOT = '/mnt/d/manga-xl'
-// manga-up mirrors <MANGA_ROOT>/<relative path> into <XL_ROOT>/<relative path>
+// manga-up mirrors <MANGA_ROOT>/<relative path> into <MANGA_XL_ROOT>/<relative path>
 // via realesrgan-ncnn-vulkan (anime model). See ~/cmd/manga-up.
 const UPSCALE_BIN = process.env.MANGA_UP_BIN || '/home/dcrispim/cmd/manga-up'
 
@@ -245,7 +243,7 @@ function runJobLocally(job: QueuedJob): Promise<boolean> {
 function chapterPaths(title: string, chapterDir: string) {
   return {
     sourceDir: path.join(MANGA_ROOT, title, chapterDir),
-    destDir: path.join(XL_ROOT, title, chapterDir),
+    destDir: path.join(MANGA_XL_ROOT, title, chapterDir),
   }
 }
 
@@ -266,7 +264,7 @@ async function isChapterUpscaled(title: string, chapterDir: string): Promise<boo
 const isQueued = (key: string) => currentJob?.key === key || waitingJob?.key === key
 
 async function listXlChapterDirs(title: string): Promise<string[]> {
-  const titlePath = path.join(XL_ROOT, title)
+  const titlePath = path.join(MANGA_XL_ROOT, title)
   const names = await readdir(titlePath).catch(() => [] as string[])
   const dirs = await Promise.all(
     names.map(async (name) => {
@@ -285,7 +283,7 @@ async function oldestXlChapterDir(title: string, excluding: string): Promise<str
 
   const withMtime = await Promise.all(
     dirs.map(async (dir) => {
-      const info = await stat(path.join(XL_ROOT, title, dir)).catch(() => null)
+      const info = await stat(path.join(MANGA_XL_ROOT, title, dir)).catch(() => null)
       return { dir, mtimeMs: info?.mtimeMs ?? 0 }
     })
   )
@@ -294,7 +292,7 @@ async function oldestXlChapterDir(title: string, excluding: string): Promise<str
 }
 
 async function evictChapter(title: string, chapterDir: string): Promise<void> {
-  await rm(path.join(XL_ROOT, title, chapterDir), { recursive: true, force: true })
+  await rm(path.join(MANGA_XL_ROOT, title, chapterDir), { recursive: true, force: true })
   getDb().prepare('DELETE FROM upscale_jobs WHERE key = ?').run(jobKey(title, chapterDir))
 }
 

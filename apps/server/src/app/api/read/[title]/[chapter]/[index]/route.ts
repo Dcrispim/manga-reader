@@ -3,8 +3,7 @@ import path from "path";
 import mime from "mime";
 import { readdir, readFile } from "fs/promises";
 import { resolveChapterDir } from "@/utils/chapterDir.server";
-
-const ROOT_PATH = "/mnt/d/manga";
+import { MANGA_ROOT } from "@/utils/paths.server";
 
 export async function GET(
   _req: NextRequest,
@@ -13,7 +12,7 @@ export async function GET(
   const { title: mangaTitle, chapter, index:indexPage } = await params;
   const chapterNumber = parseFloat(chapter);
 
-  const titlePath = path.join(ROOT_PATH, mangaTitle);
+  const titlePath = path.join(MANGA_ROOT, mangaTitle);
   const chapterDir = await resolveChapterDir(titlePath, chapterNumber);
 
   if (!chapterDir) {

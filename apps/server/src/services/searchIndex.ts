@@ -2,12 +2,12 @@ import Database from 'better-sqlite3'
 import { mkdirSync } from 'fs'
 import path from 'path'
 import { getAllTitles, readMetadata, type MetadataContent } from '@/services/metadata'
+import { MANGA_ROOT } from '@/utils/paths.server'
 
-const ROOT_PATH = '/mnt/d/manga'
 // Lives alongside the other app-managed dot-directories (.meta, .thumb,
 // .binds) inside the library mount, not in the repo — same convention the
 // rest of the codebase already uses for persisted state.
-const SEARCH_DIR = path.join(ROOT_PATH, '.search')
+const SEARCH_DIR = path.join(MANGA_ROOT, '.search')
 const DB_PATH = path.join(SEARCH_DIR, 'index.db')
 
 let db: Database.Database | null = null

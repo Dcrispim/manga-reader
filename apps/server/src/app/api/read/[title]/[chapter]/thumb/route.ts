@@ -3,9 +3,7 @@ import { readFile, readdir } from "fs/promises";
 import path from "path";
 import mime from "mime";
 import { resolveChapterDir } from "@/utils/chapterDir.server";
-
-// Defina o caminho raiz onde os mangás estão armazenados
-const ROOT_PATH = "/mnt/d/manga";
+import { MANGA_ROOT, THUMB_DIR } from "@/utils/paths.server";
 
 export async function GET(
     _req: Request,
@@ -13,11 +11,11 @@ export async function GET(
   ) {
     const { title: mangaTitle, chapter } = await params;
     const chapterNumber = parseFloat(chapter);
-    const titlePath = path.join(ROOT_PATH, mangaTitle);
+    const titlePath = path.join(MANGA_ROOT, mangaTitle);
 
     try {
-        // Check for thumbnail at ROOT_PATH/[title].jpg
-        const thumbPath = path.join(ROOT_PATH, ".thumb",`${mangaTitle}.jpg`);
+        // Check for thumbnail at THUMB_DIR/[title].jpg
+        const thumbPath = path.join(THUMB_DIR,`${mangaTitle}.jpg`);
         try {
             const thumbBuffer = await readFile(thumbPath);
             const thumbMimeType = mime.getType(thumbPath) || "application/octet-stream";

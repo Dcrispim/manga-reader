@@ -4,8 +4,7 @@ import mime from "mime";
 import { readFile } from "fs/promises";
 import { resolveChapterDir } from "@/utils/chapterDir.server";
 import { SLICES_PER_PAGE, listSortedImages, slicePath } from "@/services/xlSlices";
-
-const ROOT_PATH = "/mnt/d/manga-xl";
+import { MANGA_XL_ROOT } from "@/utils/paths.server";
 
 export async function GET(
   _req: NextRequest,
@@ -14,7 +13,7 @@ export async function GET(
   const { title: mangaTitle, chapter, index: indexPage, slice: sliceParam } = await params;
   const chapterNumber = parseFloat(chapter);
 
-  const titlePath = path.join(ROOT_PATH, mangaTitle);
+  const titlePath = path.join(MANGA_XL_ROOT, mangaTitle);
   const chapterDir = await resolveChapterDir(titlePath, chapterNumber);
   if (!chapterDir) {
     return NextResponse.json({ error: "Capítulo não encontrado" }, { status: 404 });

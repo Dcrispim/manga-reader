@@ -4,6 +4,7 @@ import { randomUUID } from 'crypto'
 import mime from 'mime'
 import sharp from 'sharp'
 import { resolveChapterDir } from '@/utils/chapterDir.server'
+import { MANGA_ROOT, MANGA_XL_ROOT } from '@/utils/paths.server'
 
 // Upscaled pages are big enough that browsers struggle to decode/paint a
 // whole one at once, so each xl page is also cut into horizontal strips
@@ -188,9 +189,6 @@ export async function clearChapterSlices(chapterPath: string): Promise<void> {
   )
 }
 
-const MANGA_ROOT = '/mnt/d/manga'
-const XL_ROOT = '/mnt/d/manga-xl'
-
 // The upscaled counterpart of /api/read/<title>/<chapter>'s list: each page
 // whose xl copy has been sliced comes back as its slice URLs
 // (xl/<index>/<slice>), stacked in reading order. Anything not upscaled or
@@ -208,7 +206,7 @@ export async function getXlChapterImages(title: string, chapter: string): Promis
   if (!smallDir) return null
   const smallFiles = await listSortedImages(path.join(smallTitle, smallDir))
 
-  const xlTitle = path.join(XL_ROOT, title)
+  const xlTitle = path.join(MANGA_XL_ROOT, title)
   const xlDir = await resolveChapterDir(xlTitle, chapterNumber)
   const xlPath = xlDir ? path.join(xlTitle, xlDir) : null
   const xlFiles = xlPath ? await listSortedImages(xlPath) : []
