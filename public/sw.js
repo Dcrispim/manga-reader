@@ -37,11 +37,12 @@ const RUNTIME_CACHE = `manga-runtime-${CACHE_VERSION}`
 const IMAGE_CACHE = `manga-images-${CACHE_VERSION}`
 const PRECACHE_URLS = ['/manifest.json']
 
-// Thumb, a page image, or its upscaled variant — deliberately excludes the
-// JSON-returning /api/read/<title> and /api/read/<title>/<chapter> list
+// Thumb, a page image, its upscaled variant, or a slice of that — deliberately
+// excludes the JSON-returning /api/read/<title>, /api/read/<title>/<chapter>
+// and /api/read/<title>/<chapter>/xl list
 // endpoints (and /api/metadata, /api/list, /api/search), which reflect the
 // library's live state and must stay network-first.
-const IMAGE_PATH_RE = /^\/api\/read\/[^/]+\/[^/]+\/(thumb|xl\/\d+|\d+)$/
+const IMAGE_PATH_RE = /^\/api\/read\/[^/]+\/[^/]+\/(thumb|xl\/\d+(\/\d+)?|\d+)$/
 
 self.addEventListener('install', (event) => {
   self.skipWaiting()

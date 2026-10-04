@@ -3,8 +3,8 @@ import { mkdirSync } from 'fs'
 import { readdir, rm, stat } from 'fs/promises'
 import { spawn } from 'child_process'
 import path from 'path'
-import mime from 'mime'
 import { resolveChapterDir } from '@/utils/chapterDir.server'
+import { clearChapterSlices, ensureChapterSlices, listSortedImages } from '@/services/xlSlices'
 
 // Upscaled pages are much larger than the originals, so xl copies are kept
 // per title on a rolling basis rather than indefinitely — once a title
@@ -74,9 +74,9 @@ function getDb(): Database.Database {
 
 const jobKey = (title: string, chapterDir: string) => `${title}/${chapterDir}`
 
+// Pages, not files: in an xl dir a sliced page is only its slices.
 async function countImages(dir: string): Promise<number> {
-  const files = await readdir(dir).catch(() => [] as string[])
-  return files.filter((file) => mime.getType(file)?.startsWith('image/')).length
+  return (await listSortedImages(dir)).length
 }
 
 function getJobRow(title: string, chapterDir: string): UpscaleJobRow | undefined {
@@ -171,12 +171,37 @@ function discardWaitingJob(job: QueuedJob) {
   getDb().prepare('DELETE FROM upscale_jobs WHERE key = ?').run(job.key)
 }
 
-function runJob(job: QueuedJob): Promise<void> {
+async function runJob(job: QueuedJob): Promise<void> {
   markProcessing(job.key)
-  return UPSCALE_WORKER_URL ? runJobViaWorker(job) : runJobLocally(job)
+  const { destDir } = chapterPaths(job.title, job.chapterDir)
+  await clearChapterSlices(destDir)
+
+  const ok = await (UPSCALE_WORKER_URL ? runJobViaWorker(job) : runJobLocally(job))
+  if (!ok) return
+
+  // manga-up can exit 0 without having written its pages (e.g. the disk
+  // refusing writes) — only call it done if the xl copy is really there.
+  const { sourceCount, destCount } = await chapterImageCounts(job.title, job.chapterDir)
+  if (sourceCount === 0 || destCount < sourceCount) {
+    markError(job.key, `upscale finished but only ${destCount} of ${sourceCount} pages exist in ${destDir}`)
+    return
+  }
+
+  // Slicing runs here, in the app, for both dispatch modes — it's CPU-only
+  // and the xl dir is mounted here. A failure isn't fatal: the upscale
+  // itself succeeded, and the xl list route serves whole pages for anything
+  // unsliced (retrying the slicing in the background).
+  try {
+    await ensureChapterSlices(destDir)
+  } catch (err) {
+    console.error(`[upscale] slicing ${job.key} failed:`, err)
+  }
+  markDone(job.key)
 }
 
-async function runJobViaWorker(job: QueuedJob): Promise<void> {
+// Resolves true once the xl pages are written; on failure the job is
+// already marked as errored.
+async function runJobViaWorker(job: QueuedJob): Promise<boolean> {
   try {
     const resp = await fetch(UPSCALE_WORKER_URL!, {
       method: 'POST',
@@ -186,18 +211,16 @@ async function runJobViaWorker(job: QueuedJob): Promise<void> {
       },
       body: JSON.stringify({ title: job.title, chapterDir: job.chapterDir }),
     })
-    if (resp.ok) {
-      markDone(job.key)
-      return
-    }
+    if (resp.ok) return true
     const data = (await resp.json().catch(() => null)) as { error?: string } | null
     markError(job.key, data?.error || `upscale worker responded ${resp.status}`)
   } catch (err) {
     markError(job.key, err instanceof Error ? err.message : String(err))
   }
+  return false
 }
 
-function runJobLocally(job: QueuedJob): Promise<void> {
+function runJobLocally(job: QueuedJob): Promise<boolean> {
   return new Promise((resolve) => {
     const child = spawn(UPSCALE_BIN, [job.title, job.chapterDir], { stdio: ['ignore', 'ignore', 'pipe'] })
     let stderr = ''
@@ -206,15 +229,15 @@ function runJobLocally(job: QueuedJob): Promise<void> {
     })
     child.on('error', (err) => {
       markError(job.key, err.message)
-      resolve()
+      resolve(false)
     })
     child.on('exit', (code) => {
       if (code === 0) {
-        markDone(job.key)
-      } else {
-        markError(job.key, stderr.trim() || `manga-up exited with code ${code}`)
+        resolve(true)
+        return
       }
-      resolve()
+      markError(job.key, stderr.trim() || `manga-up exited with code ${code}`)
+      resolve(false)
     })
   })
 }
@@ -225,6 +248,22 @@ function chapterPaths(title: string, chapterDir: string) {
     destDir: path.join(XL_ROOT, title, chapterDir),
   }
 }
+
+async function chapterImageCounts(title: string, chapterDir: string) {
+  const { sourceDir, destDir } = chapterPaths(title, chapterDir)
+  const [sourceCount, destCount] = await Promise.all([countImages(sourceDir), countImages(destDir)])
+  return { sourceCount, destCount }
+}
+
+async function isChapterUpscaled(title: string, chapterDir: string): Promise<boolean> {
+  const { sourceCount, destCount } = await chapterImageCounts(title, chapterDir)
+  return sourceCount > 0 && destCount >= sourceCount
+}
+
+// Whether this process actually has the job running or waiting. A
+// pending/processing row without that is left over from a previous process
+// (restart/crash) and would otherwise never run.
+const isQueued = (key: string) => currentJob?.key === key || waitingJob?.key === key
 
 async function listXlChapterDirs(title: string): Promise<string[]> {
   const titlePath = path.join(XL_ROOT, title)
@@ -301,21 +340,21 @@ export async function requestChapterUpscale(
   const key = jobKey(title, chapterDir)
 
   const existing = getJobRow(title, chapterDir)
-  if (existing?.status === 'processing' || existing?.status === 'pending') {
+  if ((existing?.status === 'processing' || existing?.status === 'pending') && isQueued(key)) {
     return { status: existing.status }
   }
-  if (existing?.status === 'done') {
-    return { status: 'done' }
-  }
+  const { destDir } = chapterPaths(title, chapterDir)
 
-  const { sourceDir, destDir } = chapterPaths(title, chapterDir)
-
-  // The xl copy may already be complete (e.g. produced manually before this
-  // endpoint existed) — recognize that instead of re-running the GPU job.
-  const [sourceCount, destCount] = await Promise.all([countImages(sourceDir), countImages(destDir)])
-  if (sourceCount > 0 && destCount >= sourceCount) {
-    upsertDone(key, title, chapterDir)
-    return { status: 'done', alreadyUpscaled: true }
+  // The files, not the row, decide whether it's done: a "done" row may have
+  // lost its xl copy (or never really got one), and the xl copy may exist
+  // without a row (produced manually, or before this endpoint existed).
+  // Either way, done chapters may predate slicing (or have had it fail) —
+  // get their slices ready now, e.g. while the next chapter is prefetched.
+  if (await isChapterUpscaled(title, chapterDir)) {
+    const alreadyUpscaled = existing?.status !== 'done'
+    if (alreadyUpscaled) upsertDone(key, title, chapterDir)
+    void ensureChapterSlices(destDir).catch(() => {})
+    return alreadyUpscaled ? { status: 'done', alreadyUpscaled } : { status: 'done' }
   }
 
   await enforceTitleBuffer(title, chapterDir)
@@ -333,13 +372,18 @@ export async function getChapterUpscaleStatus(
   if ('error' in resolved) return resolved
   const { chapterDir } = resolved
 
+  const key = jobKey(title, chapterDir)
   const existing = getJobRow(title, chapterDir)
-  if (existing) return { status: existing.status }
+  if (existing?.status === 'error') return { status: 'error' }
+  if ((existing?.status === 'processing' || existing?.status === 'pending') && isQueued(key)) {
+    return { status: existing.status }
+  }
 
-  const { sourceDir, destDir } = chapterPaths(title, chapterDir)
-  const [sourceCount, destCount] = await Promise.all([countImages(sourceDir), countImages(destDir)])
-  if (sourceCount > 0 && destCount >= sourceCount) {
-    upsertDone(jobKey(title, chapterDir), title, chapterDir)
+  // Same as requestChapterUpscale: a stale row (done without its files, or
+  // queued in a previous process) reports as not requested, so the next
+  // POST runs it again.
+  if (await isChapterUpscaled(title, chapterDir)) {
+    if (existing?.status !== 'done') upsertDone(key, title, chapterDir)
     return { status: 'done' }
   }
 

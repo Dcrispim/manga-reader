@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import path from "path";
 import mime from "mime";
-import { readdir, readFile } from "fs/promises";
 import { resolveChapterDir } from "@/utils/chapterDir.server";
+import { listSortedImages, readPage } from "@/services/xlSlices";
 
 const ROOT_PATH = "/mnt/d/manga-xl";
 const ROOT_PATH_SMALL = "/mnt/d/manga";
@@ -29,19 +29,9 @@ export async function GET(
 
   const chapterPath = path.join(chapterRoot, chapterDir);
   try {
-    let files = await readdir(chapterPath);
-
-    files = files.filter((file) => mime.getType(file)?.startsWith("image/"));
-
-    files.sort((a, b) => {
-      const nameA = path.parse(a).name;
-      const nameB = path.parse(b).name;
-
-      const numA = /^\d+$/.test(nameA) ? parseInt(nameA, 10) : Infinity;
-      const numB = /^\d+$/.test(nameB) ? parseInt(nameB, 10) : Infinity;
-
-      return numA - numB || nameA.localeCompare(nameB);
-    });
+    // Sliced xl pages no longer have their full file — listSortedImages still
+    // lists them, and readPage stitches them back together.
+    const files = await listSortedImages(chapterPath);
 
     const index = parseInt(indexPage, 10);
     if (isNaN(index) || index < 0 || index >= files.length) {
@@ -49,7 +39,7 @@ export async function GET(
     }
 
     const filePath = path.join(chapterPath, files[index]);
-    const fileBuffer = await readFile(filePath);
+    const fileBuffer = await readPage(chapterPath, files[index]);
     const mimeType = mime.getType(filePath) || "application/octet-stream";
 
     return new NextResponse(fileBuffer, {

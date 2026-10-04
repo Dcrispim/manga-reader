@@ -1,4 +1,5 @@
 import { fetchData } from "@/services/fetch";
+import { getXlChapterImages } from "@/services/xlSlices";
 import ReadChapterClient from "./read-chapter-client";
 import { getNextChapter, getSkippedChapterCount } from "@/utils/utils.server";
 import SidebarDrawer from "@/components/SidebarDrawer";
@@ -16,9 +17,15 @@ export default async function ReadPage({
 }) {
   const { title, chapter } = params;
   const isOriginal = searchParams?.original === "true";
-  const images: { images: string[] } = await fetchData(
-    `/api/read/${title}/${chapter}`,
-  );
+  // The xl list already points at the upscaled pages (sliced, when ready).
+  // Built in-process rather than fetched: fetchData goes to
+  // NEXT_PUBLIC_API_URL, which isn't necessarily this server (e.g. in dev).
+  const xlImages = isOriginal
+    ? null
+    : await getXlChapterImages(title, chapter).catch(() => null);
+  const images: { images?: string[] } = xlImages
+    ? { images: xlImages }
+    : await fetchData(`/api/read/${title}/${chapter}`);
   const titleInfos = await fetchData(`/api/read/${title}`);
   const nextChapter = getNextChapter(chapter, titleInfos?.chapters);
   const skippedChapters = getSkippedChapterCount(chapter, nextChapter);
