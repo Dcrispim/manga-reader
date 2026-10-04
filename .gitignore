@@ -43,3 +43,8 @@ next-env.d.ts
 
 # local search index
 .code_rag/
+
+# Expo prebuild output
+apps/mobile/android/
+apps/mobile/ios/
+apps/mobile/.expo/
