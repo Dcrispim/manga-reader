@@ -5,11 +5,14 @@ const nextConfig: NextConfig = {
   //output: 'export', // Gera arquivos estáticos
   images: {
     unoptimized: true // Necessário para export estático
-  }, eslint: {
+  },
+  eslint: {
     ignoreDuringBuilds: true, // Disables ESLint during builds
-  }, typescript: {
+  },
+  typescript: {
     ignoreBuildErrors: true, // Ignora TODOS os erros de TypeScript
   },
+  transpilePackages: ['@manga/core'],
 };
 
 export default nextConfig;
