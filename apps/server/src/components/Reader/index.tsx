@@ -44,7 +44,7 @@ export function Reader({
     setZoom(value)
   }
   useEffect(() => {
-    images && setZoom(50)
+    if (images) setZoom(50)
   }, [images])
 
   return (
@@ -96,7 +96,9 @@ export function Reader({
           )}
           {chapter === '@local' && (
             <LoadPSRTFile
-              onLoad={(psrtFile, fileName) => {
+              onLoad={
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used in binding
+                (psrtFile, fileName) => {
                 setZoom(0)
                 setImages?.(stringifyPsrt(psrtFile))
                 setZoom(50)

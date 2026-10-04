@@ -18,3 +18,4 @@ jobs:
       - run: pnpm test
       - run: pnpm --filter @manga/server build
       - run: pnpm typecheck
+      - run: pnpm lint

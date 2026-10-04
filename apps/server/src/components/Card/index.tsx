@@ -51,7 +51,7 @@ const Card: React.FC<CardProps> = ({
 }
 
 export const asCard = (
-  Component: React.JSXElementConstructor<any>,
+  Component: React.JSXElementConstructor<{size: number}>,
   name: string,
   link: string = ''
 ) => {

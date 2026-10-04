@@ -26,7 +26,7 @@ export default function MangaList({
   }[]
 }) {
   const { isHuge, width } = useScreen()
-  const [manga, setManga] = useState(
+  const [, setManga] = useState(
     {} as {
       name: string
       thumb: string

@@ -6,7 +6,7 @@ import { LucideArrowLeft } from 'lucide-react'
 import { useState } from 'react'
 
 export default function ReadPage() {
-  const [title, setTitle] = useState('local file')
+  const [title] = useState('local file')
   const [images, setImages] = useState({
     psrtContent: '',
   } )
@@ -15,6 +15,7 @@ export default function ReadPage() {
     <div className="w-full h-screen flex justify-center">
       {!images.psrtContent && (
         <div className="flex flex-col w-full h-auto justify-center items-center">
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- full navigation needed for offline fallback */}
           <a className="flex flex-row" href="/">
             <div className="w-14 mt-2 flex items-center justify-between px-1 hover:border-b">
               <LucideArrowLeft size={15} />

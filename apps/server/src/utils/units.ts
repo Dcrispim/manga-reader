@@ -3,11 +3,13 @@ export const unitStyleProp = {}
 export abstract class StyleUnit {
   abstract toString(): string
 
-  static parse(value: string) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  static parse(_value: string) {
     throw new Error('not implemented!')
   }
 
-  static stringify(objectValue: object) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  static stringify(_objectValue: object) {
     throw new Error('not implemented!')
   }
 
@@ -92,7 +94,8 @@ export class StyleRotate extends StyleUnit {
   toString() {
     return `rotate(${this.angle}${this.unit})`
   }
-  set(styleValue: string): object {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  set(_styleValue: string): object {
     throw new Error('Method not implemented.')
   }
 }

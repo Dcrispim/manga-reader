@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useState, useRef, useMemo } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import i18n from '@/services/i18n'
@@ -12,9 +12,8 @@ export default function GridView({ chapters }: { chapters: string[] }) {
     const { title, currentChapter: chapter, goToChapter } = useChapterReader()
     const [gridView, setGridView] = useState<'chapters' | 'volume'>('chapters')
     const [selectedVolume, setSelectedVolume] = useState<number | null>(null)
-    const [tabGrid, setTabGrid] = useState<number | null>(null)
     const currentChapterRef = useRef<HTMLDivElement | null>(null)
-    const [{ lastRead, history: lastChapters }, setHistory] = useState<TitleHistory>({
+    const [{ history: lastChapters }, setHistory] = useState<TitleHistory>({
         lastRead: null,
         history: [],
         openedAt: {}
@@ -47,7 +46,7 @@ export default function GridView({ chapters }: { chapters: string[] }) {
             localHistory = allHistory[title]
 
             
-        } catch (error) {
+        } catch {
             return
         }
 
@@ -90,7 +89,7 @@ export default function GridView({ chapters }: { chapters: string[] }) {
                     id="chapters-grid"
                     className="grid grid-cols-[repeat(auto-fit,_minmax(3rem,_1fr))] gap-3 w-full px-5 h-96 overflow-y-scroll"
                 >
-                    {(selectedVolume ? chapters.filter((chap, index) => parseFloat(chap) >= selectedVolume * 100 && parseFloat(chap) < (selectedVolume + 1) * 100) : chapters).map((chap: string) => (
+                    {(selectedVolume ? chapters.filter((chap) => parseFloat(chap) >= selectedVolume * 100 && parseFloat(chap) < (selectedVolume + 1) * 100) : chapters).map((chap: string) => (
                         <Link
                             key={chap}
                             href={`/read/${title}/${chap}`}

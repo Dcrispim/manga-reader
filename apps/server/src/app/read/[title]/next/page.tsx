@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { getNextChapter } from '@/utils/utils.server';
-import { getHistory, TitleHistory } from '@/utils/history';
+import { getHistory } from '@/utils/history';
 
 export default function LastChapterPage() {
     const router = useRouter();
