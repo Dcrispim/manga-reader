@@ -12,7 +12,7 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true, // Ignora TODOS os erros de TypeScript
   },
-  transpilePackages: ['@manga/core'],
+  transpilePackages: ['@manga/core', '@manga/api-contract'],
 };
 
 export default nextConfig;

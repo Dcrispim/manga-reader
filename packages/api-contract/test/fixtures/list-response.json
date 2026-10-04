@@ -1,0 +1,16 @@
+[
+  {
+    "caps": 5,
+    "description": "Description for Alpha",
+    "link": "/read/alpha",
+    "name": "Alpha",
+    "thumb": "/api/read/Alpha/01/thumb"
+  },
+  {
+    "caps": 2,
+    "description": "Description for Beta",
+    "link": "/read/beta",
+    "name": "Beta",
+    "thumb": "/api/read/Beta/01/thumb"
+  }
+]
