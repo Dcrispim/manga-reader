@@ -7,6 +7,8 @@ import { getSetting } from "../settings/repo";
 import { expoFileStore } from "../storage/files";
 import { reconcile } from "../storage/downloads";
 import { reconcileTransient } from "../storage/transient";
+import "../sync/backgroundTask";
+import { useForegroundSync } from "../sync/useForegroundSync";
 
 const centered = {
   flex: 1,
@@ -31,6 +33,12 @@ function ReconcileOnStart() {
     reconcile(db, expoFileStore).catch(() => {});
     reconcileTransient(db, expoFileStore).catch(() => {});
   }, []);
+  return null;
+}
+
+// Mounted only after the migrations gate, so every cycle sees a ready schema.
+function ForegroundSync() {
+  useForegroundSync();
   return null;
 }
 
@@ -59,6 +67,7 @@ function MigrationGate({ onRestart }: { onRestart: () => void }) {
     <>
       <Stack screenOptions={{ headerShown: false }} />
       <ReconcileOnStart />
+      <ForegroundSync />
       <FirstRunRedirect />
     </>
   );
