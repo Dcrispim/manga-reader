@@ -1,8 +1,9 @@
-import { Stack } from "expo-router";
-import { useState } from "react";
+import { Stack, useRouter } from "expo-router";
+import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
-import { useMigrationsGate } from "../db/client";
+import { db, useMigrationsGate } from "../db/client";
+import { getSetting } from "../settings/repo";
 
 const centered = {
   flex: 1,
@@ -10,6 +11,15 @@ const centered = {
   justifyContent: "center",
   gap: 16,
 } as const;
+
+// First run: no server address saved yet, so open Settings straight away.
+function FirstRunRedirect() {
+  const router = useRouter();
+  useEffect(() => {
+    if (!getSetting(db, "server.host")) router.replace("/settings");
+  }, [router]);
+  return null;
+}
 
 function MigrationGate({ onRestart }: { onRestart: () => void }) {
   const { success, error } = useMigrationsGate();
@@ -32,7 +42,12 @@ function MigrationGate({ onRestart }: { onRestart: () => void }) {
       </View>
     );
   }
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <>
+      <Stack screenOptions={{ headerShown: false }} />
+      <FirstRunRedirect />
+    </>
+  );
 }
 
 export default function RootLayout() {

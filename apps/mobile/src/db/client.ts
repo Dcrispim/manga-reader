@@ -24,6 +24,7 @@ export function useMigrationsGate(): MigrationsGate {
     try {
       db.insert(schema.diagLog)
         .values({
+          // eslint-disable-next-line react-hooks/purity -- error path only; a timestamp for the log row
           at: Date.now(),
           level: "error",
           scope: "db.migrate",
