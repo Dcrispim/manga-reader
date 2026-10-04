@@ -1,0 +1,53 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`bind routes > GET unknown code returns 404 1`] = `
+{
+  "error": "Código não encontrado",
+}
+`;
+
+exports[`bind routes > POST /api/bind creates <root>/.binds/<CODE>.json 1`] = `
+{
+  "chapters": {
+    "Alpha": "1",
+  },
+  "code": "<CODE>",
+  "createdAt": 1700000000000,
+  "history": {},
+  "updatedAt": 1700000000000,
+}
+`;
+
+exports[`bind routes > POST /api/bind/[code] merges into the existing bind 1`] = `
+{
+  "chapters": {
+    "Alpha": "2",
+  },
+  "code": "<CODE>",
+  "createdAt": 1700000000000,
+  "history": {
+    "Alpha": {
+      "history": [
+        "1",
+        "2",
+      ],
+      "lastRead": 5000,
+      "openedAt": {
+        "1": 4000,
+        "2": 5000,
+      },
+    },
+  },
+  "updatedAt": 1700000001000,
+}
+`;
+
+exports[`bind routes > POST /api/bind/[code] recreates a missing bind under the normalized code 1`] = `
+{
+  "chapters": {},
+  "code": "ZZZ999",
+  "createdAt": 1700000001000,
+  "history": {},
+  "updatedAt": 1700000001000,
+}
+`;
