@@ -237,7 +237,7 @@ const balloons = {
 
 const styleParser = (
   entry: PSRTEntry,
-  parentRef?: RefObject<HTMLImageElement>
+  parentRef?: RefObject<HTMLImageElement | null>
 ): CSSProperties => {
   const { balloon = 'none', ...style } = entry.style as CSSProperties & {
     balloon: 'default'
