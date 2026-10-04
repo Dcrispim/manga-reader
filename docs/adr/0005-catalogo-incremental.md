@@ -16,3 +16,19 @@ Catálogo sincroniza ativo via **`GET /api/catalog?since=<timestamp>`** (increme
 - **Identificação do servidor**: `serverId` permite rastrear "qual servidor estou conectado"; útil para sync descentralizada futura.
 - **Health check simples**: `/api/health` é o primeiro GET para validar conexão.
 - **Catálogo não consome quota**: Pode ser recriado a qualquer momento; apenas metadados sobre títulos sincronizam.
+
+## Medições do `GET /api/catalog` (M3-03)
+
+Biblioteca sintética 200 títulos × 400 capítulos × 15 páginas (1,2 mi de arquivos `.jpg` vazios), em btrfs (NVMe), arquivos recém-criados (cache de diretórios quente), via `buildCatalog` (`PERF=1`, `test/perf/catalog.perf.test.ts`):
+
+| Chamada | Tempo | Meta |
+| --- | --- | --- |
+| Completa (`since=0`) | ~9,0 s | < 60 s |
+| Incremental (`since=serverTime`) | ~6 ms | < 300 ms |
+
+Tamanho da resposta completa: 5.274.242 B (JSON) → **383.488 B (~375 KB) com gzip**. Medido em Node (`zlib.gzipSync` sobre o JSON), não via HTTP/`curl --compressed`.
+
+Notas:
+- Cache em memória por título (chave = mtimes da pasta, `.metadata` e `.thumb`): dois clientes com `since=0` não recontam páginas de títulos inalterados. Como o scanner, não enxerga páginas adicionadas dentro de um capítulo existente até o servidor reiniciar.
+- `serverTime` é capturado antes da varredura, então mudanças durante ela aparecem na próxima chamada.
+- A varredura completa a frio (cache de diretórios do SO frio) pode ser bem mais lenta que a medida acima.

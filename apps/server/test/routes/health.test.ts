@@ -124,12 +124,12 @@ describe('health endpoint', () => {
     expect(body.version).toBe('1.3.0')
   })
 
-  it('includes empty features array', async () => {
+  it('advertises the catalog feature', async () => {
     const route = await import('@/app/api/health/route')
     const res = await route.GET()
     const body = await res.json()
     expect(Array.isArray(body.features)).toBe(true)
-    expect(body.features).toEqual([])
+    expect(body.features).toEqual(['catalog'])
   })
 
   it('includes Cache-Control: no-store header', async () => {
