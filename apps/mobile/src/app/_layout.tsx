@@ -8,6 +8,9 @@ import { expoFileStore } from "../storage/files";
 import { reconcile } from "../storage/downloads";
 import { reconcileTransient } from "../storage/transient";
 import "../sync/backgroundTask";
+import { useServerStatus } from "../server/useServerStatus";
+import { ScreenBoundary } from "../ui/ScreenBoundary";
+import { ServerStatusPill } from "../ui/ServerStatusPill";
 import { useForegroundSync } from "../sync/useForegroundSync";
 
 const centered = {
@@ -42,6 +45,12 @@ function ForegroundSync() {
   return null;
 }
 
+// Single mount point of useServerStatus, so there is one revalidation timer.
+function HeaderPill() {
+  const { status } = useServerStatus();
+  return <ServerStatusPill status={status} />;
+}
+
 function MigrationGate({ onRestart }: { onRestart: () => void }) {
   const { success, error } = useMigrationsGate();
 
@@ -65,7 +74,15 @@ function MigrationGate({ onRestart }: { onRestart: () => void }) {
   }
   return (
     <>
-      <Stack screenOptions={{ headerShown: false }} />
+      <ScreenBoundary>
+        <Stack screenOptions={{ headerRight: () => <HeaderPill /> }}>
+          <Stack.Screen name="index" options={{ title: "Manga Reader" }} />
+          <Stack.Screen name="search" options={{ title: "Buscar" }} />
+          <Stack.Screen name="category/[id]" options={{ title: "Categoria" }} />
+          <Stack.Screen name="title/[name]" options={{ title: "" }} />
+          <Stack.Screen name="settings/index" options={{ title: "Configurações" }} />
+        </Stack>
+      </ScreenBoundary>
       <ReconcileOnStart />
       <ForegroundSync />
       <FirstRunRedirect />

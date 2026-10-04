@@ -339,3 +339,58 @@ describe('syncTitleOnDemand (degraded mode)', () => {
     expect(d.db.select().from(titles).all()).toEqual([]);
   });
 });
+
+describe('cover retry', () => {
+  it('retries a failed cover on a later cycle even when the catalog returns nothing', async () => {
+    let fail = true;
+    const s = setup();
+    const files = memoryFileStore({ downloader: () => ({ ok: !fail, bytes: 10 }) });
+    await goOnline(s.db);
+    await syncCatalog({ ...s, files });
+    const failed = s.db.select().from(titles).where(eq(titles.name, 'Alpha')).get()!;
+    expect(failed.thumbPath).toBeNull();
+    expect(failed.thumbWantedVersion).toBe('v1');
+    expect(failed.thumbUrl).toBe('/api/thumb/Alpha');
+
+    fail = false;
+    s.fetchImpl.mockImplementationOnce(async () =>
+      new Response(
+        JSON.stringify(catalogBody({ serverTime: 2000, full: false, titles: [] })),
+        { status: 200 },
+      ),
+    );
+    await syncCatalog({ ...s, files });
+    const ok = s.db.select().from(titles).where(eq(titles.name, 'Alpha')).get()!;
+    expect(ok.thumbPath).toBe(`memory://doc/thumbs/${hashName('Alpha')}.jpg`);
+    expect(ok.thumbVersion).toBe('v1');
+    expect(ok.thumbWantedVersion).toBeNull();
+    expect(ok.thumbUrl).toBeNull();
+  });
+
+  it('retries at most 20 covers per cycle', async () => {
+    const s = setup();
+    const files = memoryFileStore({ downloader: () => ({ ok: false, bytes: 0 }) });
+    await goOnline(s.db);
+    const names = Array.from({ length: 25 }, (_, i) => `T${i}`);
+    s.fetchImpl.mockImplementationOnce(async () =>
+      new Response(
+        JSON.stringify(
+          catalogBody({ allTitleNames: names, titles: names.map((n) => title(n, [1])) }),
+        ),
+        { status: 200 },
+      ),
+    );
+    await syncCatalog({ ...s, files });
+    const before = files.downloadLog.length; // 25 initial attempts
+    s.fetchImpl.mockImplementationOnce(async () =>
+      new Response(
+        JSON.stringify(
+          catalogBody({ serverTime: 2000, full: false, allTitleNames: names, titles: [] }),
+        ),
+        { status: 200 },
+      ),
+    );
+    await syncCatalog({ ...s, files });
+    expect(files.downloadLog.length - before).toBe(20);
+  });
+});

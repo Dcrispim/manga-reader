@@ -34,6 +34,10 @@ export const titles = sqliteTable("titles", {
   categoriesJson: text("categories_json").notNull().default("[]"),
   thumbVersion: text("thumb_version"),
   thumbPath: text("thumb_path"),
+  // Cover the server wants us to have but that is not on disk yet (download
+  // failed); the catalog is incremental, so this is what lets us retry later.
+  thumbUrl: text("thumb_url"),
+  thumbWantedVersion: text("thumb_wanted_version"),
   serverMtime: integer("server_mtime"),
   updatedAt: integer("updated_at").notNull(),
 });

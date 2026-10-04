@@ -7,7 +7,7 @@ import {
   type CatalogTitle,
 } from '@manga/api-contract';
 import { chapterNumber } from '@manga/core';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull } from 'drizzle-orm';
 import type { ZodSchema } from 'zod';
 
 import { hashName } from '../catalog/hash';
@@ -19,7 +19,9 @@ import { getServerState, hasFeature } from '../server/status';
 import { getSetting } from '../settings/repo';
 import type { FileStore } from '../storage/files';
 
-export const SERVER_SOURCE = 'server';
+import { SERVER_SOURCE } from './serverSource';
+
+export { SERVER_SOURCE };
 export const CURSOR_KEY = 'catalog.since';
 // The first sync can carry ~80k chapters in one JSON body.
 const CATALOG_TIMEOUT_MS = 60_000;
@@ -110,6 +112,7 @@ async function runSync(deps: SyncDeps): Promise<SyncOutcome> {
       setCursor(tx as unknown as Db, catalog.serverTime);
     });
     for (const p of removedThumbs) await files.remove(p);
+    await retryThumbs(deps);
   } catch (err) {
     log(db, 'error', 'sync.catalog', `write failed: ${String(err)}`);
     return { skipped: 'write-failed' };
@@ -165,37 +168,81 @@ function writeTitle(db: Db, t: CatalogTitle, at: number): void {
   });
 }
 
+// Covers retried per cycle (titles whose last download failed).
+const THUMB_RETRY_LIMIT = 20;
+
 /** Downloads the cover only when its version changed; a failure keeps the old one. */
 async function syncThumb(deps: SyncDeps, t: CatalogTitle): Promise<void> {
-  const { db, client, files } = deps;
+  const { db, files } = deps;
   if (!t.thumb) return;
   const row = db
     .select({ v: titles.thumbVersion, p: titles.thumbPath })
     .from(titles)
     .where(eq(titles.name, t.name))
     .get();
-  if (row?.v === t.thumb.version && row.p && (await files.exists(row.p))) return;
+  if (row?.v === t.thumb.version && row.p && (await files.exists(row.p))) {
+    db.update(titles)
+      .set({ thumbUrl: null, thumbWantedVersion: null })
+      .where(eq(titles.name, t.name))
+      .run();
+    return;
+  }
+  // Remember what we want before trying: a failed download is retried by
+  // retryThumbs, since the incremental catalog will not send this title again.
+  db.update(titles)
+    .set({ thumbUrl: t.thumb.url, thumbWantedVersion: t.thumb.version })
+    .where(eq(titles.name, t.name))
+    .run();
+  await downloadThumb(deps, t.name, t.thumb.url, t.thumb.version);
+}
 
-  const url = /^https?:\/\//.test(t.thumb.url)
-    ? t.thumb.url
-    : client.url(t.thumb.url);
+async function downloadThumb(
+  deps: SyncDeps,
+  name: string,
+  rawUrl: string,
+  version: string,
+): Promise<void> {
+  const { db, client, files } = deps;
+  const url = /^https?:\/\//.test(rawUrl) ? rawUrl : client.url(rawUrl);
   if (!url) return;
 
   const dir = `${files.documentDirectory}/thumbs`;
-  const dest = `${dir}/${hashName(t.name)}.jpg`;
+  const dest = `${dir}/${hashName(name)}.jpg`;
   const tmp = `${dest}.tmp`;
   // Download to a temp name first so a broken transfer never replaces a good cover.
   await files.makeDir(dir);
   const dl = await files.download(url, tmp);
   if (!dl.ok || !(await files.move(tmp, dest))) {
     await files.remove(tmp);
-    log(db, 'warn', 'sync.catalog', `cover download failed: ${t.name}`);
+    log(db, 'warn', 'sync.catalog', `cover download failed: ${name}`);
     return;
   }
   db.update(titles)
-    .set({ thumbVersion: t.thumb.version, thumbPath: dest })
-    .where(eq(titles.name, t.name))
+    .set({
+      thumbVersion: version,
+      thumbPath: dest,
+      thumbUrl: null,
+      thumbWantedVersion: null,
+    })
+    .where(eq(titles.name, name))
     .run();
+}
+
+/** Cheap pass over covers whose download failed earlier (bounded per cycle). */
+async function retryThumbs(deps: SyncDeps): Promise<void> {
+  const pending = deps.db
+    .select({
+      name: titles.name,
+      url: titles.thumbUrl,
+      version: titles.thumbWantedVersion,
+    })
+    .from(titles)
+    .where(isNotNull(titles.thumbWantedVersion))
+    .limit(THUMB_RETRY_LIMIT)
+    .all();
+  for (const p of pending) {
+    if (p.url && p.version) await downloadThumb(deps, p.name, p.url, p.version);
+  }
 }
 
 /**
