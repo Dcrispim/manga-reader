@@ -8,6 +8,8 @@ import { Directory, File, Paths } from 'expo-file-system';
 export interface FileStore {
   /** App-private document directory (no trailing slash). */
   readonly documentDirectory: string;
+  /** OS-clearable cache directory (no trailing slash); holds the transient read cache. */
+  readonly cacheDirectory: string;
   download(url: string, dest: string): Promise<{ ok: boolean; bytes: number }>;
   /** Moves a file or directory, overwriting the destination. */
   move(from: string, to: string): Promise<boolean>;
@@ -25,6 +27,9 @@ export interface FileStore {
 export const expoFileStore: FileStore = {
   get documentDirectory() {
     return Paths.document.uri.replace(/\/+$/, '');
+  },
+  get cacheDirectory() {
+    return Paths.cache.uri.replace(/\/+$/, '');
   },
   async download(url, dest) {
     try {

@@ -25,6 +25,7 @@ export function memoryFileStore(
 
   return {
     documentDirectory: 'memory://doc',
+    cacheDirectory: 'memory://cache',
     files,
     downloadLog,
     async download(url, dest) {

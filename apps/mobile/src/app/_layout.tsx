@@ -6,6 +6,7 @@ import { db, useMigrationsGate } from "../db/client";
 import { getSetting } from "../settings/repo";
 import { expoFileStore } from "../storage/files";
 import { reconcile } from "../storage/downloads";
+import { reconcileTransient } from "../storage/transient";
 
 const centered = {
   flex: 1,
@@ -28,6 +29,7 @@ function FirstRunRedirect() {
 function ReconcileOnStart() {
   useEffect(() => {
     reconcile(db, expoFileStore).catch(() => {});
+    reconcileTransient(db, expoFileStore).catch(() => {});
   }, []);
   return null;
 }
