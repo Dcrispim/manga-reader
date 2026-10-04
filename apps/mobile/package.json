@@ -39,6 +39,7 @@
     "babel-preset-expo": "^57.0.13",
     "better-sqlite3": "^13.0.3",
     "drizzle-kit": "^0.31.11",
+    "eslint": "9.24.0",
     "eslint-config-expo": "~57.0.2",
     "typescript": "~6.0.3"
   },
