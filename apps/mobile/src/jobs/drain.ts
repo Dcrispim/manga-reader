@@ -12,6 +12,7 @@ import {
   type Semaphore,
   type WorkerClient,
 } from './downloadWorker';
+import { runUpgradeJob } from './upgradeWorker';
 import { enqueue, nextRunnable, requeue, type JobKind } from './repo';
 import type { FileStore } from '../storage/files';
 
@@ -80,17 +81,19 @@ export async function drainQueue(
     const semaphore = deps.semaphore ?? createSemaphore(MAX_CONCURRENT_PAGES);
     await resumePaused(deps);
     while (isOnline() && now() < end) {
-      // Upgrades are M4-11; until then only downloads are picked.
-      const job = nextRunnable(deps.db, now(), opts.onlyKinds ?? ['download']);
-      if (!job || job.kind !== 'download') break;
-      await runDownloadJob(job, {
+      const job = nextRunnable(deps.db, now(), opts.onlyKinds ?? ['download', 'upgrade']);
+      if (!job) break;
+      const workerDeps = {
         db: deps.db,
         files: deps.files,
         client: deps.client,
         now,
         semaphore,
         shouldStop: () => now() >= end || !isOnline(),
-      });
+      };
+      // Both kinds share one semaphore, so image requests stay capped at 2.
+      if (job.kind === 'upgrade') await runUpgradeJob(job, workerDeps);
+      else await runDownloadJob(job, workerDeps);
       ran++;
     }
   } catch {

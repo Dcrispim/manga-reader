@@ -106,6 +106,8 @@ export const jobs = sqliteTable(
     attempts: integer("attempts").notNull().default(0),
     nextAttemptAt: integer("next_attempt_at").notNull().default(0),
     lastError: text("last_error"),
+    // Per-kind state that must survive restarts (upgrade: last POST time).
+    metaJson: text("meta_json"),
     createdAt: integer("created_at").notNull(),
   },
   (t) => [

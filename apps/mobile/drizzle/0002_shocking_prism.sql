@@ -1,0 +1,1 @@
+ALTER TABLE `jobs` ADD `meta_json` text;

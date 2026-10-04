@@ -57,6 +57,8 @@ export function createSemaphore(limit: number): Semaphore {
 
 export interface WorkerClient {
   getJson<T>(path: string, schema: ZodSchema): Promise<Result<T>>;
+  /** Only the upgrade worker needs it (upscale request); absent = unreachable. */
+  postJson?<T>(path: string, body: unknown, schema: ZodSchema): Promise<Result<T>>;
   url(pathOrRelative: string): string | null;
 }
 

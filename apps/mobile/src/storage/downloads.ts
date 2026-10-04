@@ -5,6 +5,7 @@ import { hashName } from '../catalog/hash';
 import { downloads, jobs } from '../db/schema';
 import type { Db } from '../db/types';
 import { log } from '../diag/log';
+import { enqueue } from '../jobs/repo';
 import { isRead } from '../history/repo';
 import { chapterId, getOpenChapterId } from '../reader/openChapter';
 import { getSetting } from '../settings/repo';
@@ -80,6 +81,10 @@ export async function commitChapter(
       set: { dir, pages, bytes, savedAt, quality },
     })
     .run();
+  // Only original-quality chapters can be upgraded; an xl commit is final.
+  if (quality === 'original' && getSetting(db, 'downloads.highRes') === 'true') {
+    enqueue(db, 'upgrade', title, chapter);
+  }
   const protectedIds = [chapterId(title, chapter)];
   const open = getOpenChapterId();
   if (open) protectedIds.push(open);
