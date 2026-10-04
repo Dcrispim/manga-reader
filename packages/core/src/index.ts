@@ -5,3 +5,7 @@ export * from "./library/chapters";
 export * from "./library/images";
 export * from "./library/metadata";
 export * from "./library/categories";
+export * from "./library/fs";
+export * from "./library/scan";
+export * from "./library/memoryFs";
+export * from "./abort";
