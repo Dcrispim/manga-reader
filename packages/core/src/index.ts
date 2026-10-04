@@ -9,3 +9,4 @@ export * from "./library/fs";
 export * from "./library/scan";
 export * from "./library/memoryFs";
 export * from "./abort";
+export * from "./space/policy";
