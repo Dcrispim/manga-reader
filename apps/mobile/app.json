@@ -37,7 +37,8 @@
       ],
       "expo-sqlite",
       "expo-background-task",
-      "expo-image"
+      "expo-image",
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true

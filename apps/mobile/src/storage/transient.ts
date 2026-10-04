@@ -296,3 +296,30 @@ export async function promoteToDownload(
     return false;
   }
 }
+
+/** Re-applies the LRU cap now (the user lowered it); spares only the open chapter. */
+export async function enforceTransientNow(db: Db, files: FileStore): Promise<void> {
+  const open = getOpenChapterId();
+  const rows = db.select().from(transientPages).all();
+  const guarded = new Set(open ? [open] : []);
+  const protectedIds = rows
+    .filter((r) => guarded.has(chapterId(r.title, r.chapter)))
+    .map((r) => pageId(r.title, r.chapter, r.page));
+  const plan = new Set(
+    planLruEviction(
+      rows.map((r) => ({
+        id: pageId(r.title, r.chapter, r.page),
+        bytes: r.bytes,
+        lastAccess: r.lastAccess,
+      })),
+      maxBytes(db),
+      protectedIds,
+    ),
+  );
+  for (const r of rows) {
+    if (!plan.has(pageId(r.title, r.chapter, r.page))) continue;
+    await files.remove(r.path);
+    deleteRow(db, r.title, r.chapter, r.page);
+  }
+  if (plan.size > 0) log(db, 'info', 'space', `transient cache evicted ${plan.size} pages`);
+}
