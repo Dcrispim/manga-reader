@@ -32,9 +32,9 @@ function Carousel({
         keyExtractor={(t) => t.name}
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: 8, gap: 8 }}
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
           <Link href={{ pathname: "/title/[name]", params: { name: item.name } }}>
-            <View style={styles.card}>
+            <View style={styles.card} testID={`title-card-${index}`}>
               <TitleCover name={item.name} thumbPath={item.thumbPath} />
               <Text numberOfLines={2} style={styles.cardName}>
                 {item.name}

@@ -12,6 +12,8 @@ interface Props {
   /** Bumped by the screen when the server turns online, to retry failed pages. */
   retryToken?: number;
   onAspect?: (aspect: number) => void;
+  /** Lets E2E flows find a given page (e.g. page-0). */
+  testID?: string;
 }
 
 /**
@@ -19,7 +21,7 @@ interface Props {
  * load shows a quiet placeholder; tapping it (or the server coming back)
  * retries. Never an alert or a toast.
  */
-export function PageImage({ uri, fallbackAspect, retryToken = 0, onAspect }: Props) {
+export function PageImage({ uri, fallbackAspect, retryToken = 0, onAspect, testID }: Props) {
   const { width } = useWindowDimensions();
   const [aspect, setAspect] = useState<number | null>(null);
   const [failed, setFailed] = useState(false);
@@ -55,7 +57,7 @@ export function PageImage({ uri, fallbackAspect, retryToken = 0, onAspect }: Pro
   }
 
   return (
-    <View style={{ width, height }}>
+    <View style={{ width, height }} testID={testID}>
       <Image
         key={attempt}
         source={{ uri }}

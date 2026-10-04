@@ -1,0 +1,9 @@
+# Sub-flow: the v1 promise is that no error text ever reaches the user.
+# Word boundaries keep legitimate titles (e.g. "Terror") from tripping it.
+appId: com.dcrispim.mangareader
+---
+- assertNotVisible: ".*\\b(Erro|Error|Exception)\\b.*"
+- assertNotVisible: ".*\\bfalhou\\b.*"
+- assertNotVisible: "undefined"
+- assertNotVisible: "null"
+- assertNotVisible: "NaN"

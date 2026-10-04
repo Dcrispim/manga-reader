@@ -133,6 +133,7 @@ export default function SettingsScreen() {
         autoCapitalize="none"
         autoCorrect={false}
         accessibilityLabel="Host"
+        testID="settings-host"
       />
       <Text>Porta</Text>
       <TextInput
@@ -144,12 +145,14 @@ export default function SettingsScreen() {
         }}
         keyboardType="numeric"
         accessibilityLabel="Porta"
+        testID="settings-port"
       />
 
       <Pressable
         accessibilityRole="button"
         style={styles.button}
         disabled={busy}
+        testID="settings-test"
         onPress={() => void onTest()}
       >
         <Text style={styles.buttonText}>Testar conexão</Text>
@@ -159,6 +162,7 @@ export default function SettingsScreen() {
         accessibilityRole="button"
         style={styles.button}
         disabled={busy}
+        testID="settings-save"
         onPress={() => void onSave()}
       >
         <Text style={styles.buttonText}>Salvar</Text>
@@ -169,6 +173,7 @@ export default function SettingsScreen() {
         accessibilityRole="button"
         style={styles.button}
         disabled={syncing}
+        testID="settings-sync"
         onPress={() => {
           setSyncing(true);
           void runCycle({ mode: 'foreground' }).finally(() => setSyncing(false));

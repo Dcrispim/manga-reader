@@ -18,7 +18,7 @@ const LABELS: Record<ServerStatus, string> = {
 
 export function ServerStatusPill({ status }: { status: ServerStatus }) {
   return (
-    <View style={[styles.pill, { backgroundColor: COLORS[status] }]}>
+    <View testID="status-pill" style={[styles.pill, { backgroundColor: COLORS[status] }]}>
       <Text style={styles.text}>{LABELS[status]}</Text>
     </View>
   );

@@ -110,13 +110,25 @@ export default function TitleScreen() {
         keyExtractor={(r) => r.chapter}
         ListHeaderComponent={header}
         ListEmptyComponent={<Text style={styles.empty}>Nenhum capítulo disponível</Text>}
-        renderItem={({ item }) => <ChapterItem title={name} row={item} online={online} />}
+        renderItem={({ item, index }) => (
+          <ChapterItem title={name} row={item} online={online} index={index} />
+        )}
       />
     </View>
   );
 }
 
-function ChapterItem({ title, row, online }: { title: string; row: ChapterRow; online: boolean }) {
+function ChapterItem({
+  title,
+  row,
+  online,
+  index,
+}: {
+  title: string;
+  row: ChapterRow;
+  online: boolean;
+  index: number;
+}) {
   const router = useRouter();
   const label = badgeLabel(row.badge);
   const canDownload = row.onServer && (row.badge.kind === "none" || row.badge.kind === "cached");
@@ -125,15 +137,24 @@ function ChapterItem({ title, row, online }: { title: string; row: ChapterRow; o
       <Pressable
         style={{ flex: 1 }}
         accessibilityRole="button"
+        testID={`chapter-row-${index}`}
         onPress={() =>
           router.push({ pathname: "/read/[title]/[chapter]", params: { title, chapter: row.chapter } })
         }
       >
         <Text>{`Capítulo ${row.chapter}${row.pages ? ` · ${row.pages} págs.` : ""}`}</Text>
-        {label ? <Text style={styles.badge}>{label}</Text> : null}
+        {label ? (
+          <Text style={styles.badge} testID={`chapter-badge-${index}`}>
+            {label}
+          </Text>
+        ) : null}
       </Pressable>
       {canDownload ? (
-        <Pressable accessibilityRole="button" onPress={() => enqueueAndDrain(db, "download", title, row.chapter)}>
+        <Pressable
+          accessibilityRole="button"
+          testID={`download-button-${index}`}
+          onPress={() => enqueueAndDrain(db, "download", title, row.chapter)}
+        >
           <Text style={styles.link}>{online ? "Baixar" : "Baixar quando disponível"}</Text>
         </Pressable>
       ) : null}

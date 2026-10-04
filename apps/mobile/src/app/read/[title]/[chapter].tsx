@@ -103,6 +103,7 @@ export default function ReaderScreen() {
             removeClippedSubviews
             renderItem={({ item }) => (
               <PageImage
+                testID={`page-${item.index}`}
                 uri={item.uri}
                 fallbackAspect={aspect}
                 retryToken={retryToken}

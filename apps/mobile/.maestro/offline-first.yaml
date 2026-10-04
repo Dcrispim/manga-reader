@@ -1,0 +1,136 @@
+# v1 definition of done: with the server down, a closed and reopened app opens,
+# lists the catalog and reads a downloaded chapter with no error text anywhere;
+# progress/queue work resumes when the server returns.
+# Run through scripts/mobile/e2e.sh (it provides HOST, PORT, CONTROL_PORT and
+# the test container). The address is 10.0.2.2: the emulator's alias for the host.
+appId: com.dcrispim.mangareader
+env:
+  HOST: 10.0.2.2
+  PORT: "3994"
+  CONTROL_PORT: "3995"
+---
+- clearState
+- launchApp
+
+# --- first run: Settings opens by itself; point it at the test server
+- extendedWaitUntil:
+    visible:
+      id: settings-host
+    timeout: 30000
+- tapOn:
+    id: settings-host
+- inputText: ${HOST}
+- hideKeyboard
+- tapOn:
+    id: settings-port
+- eraseText: 8
+- inputText: ${PORT}
+- hideKeyboard
+- tapOn:
+    id: settings-test
+- extendedWaitUntil:
+    visible: "Conectado.*"
+    timeout: 20000
+- runFlow: no-errors.yaml
+- tapOn:
+    id: settings-save
+
+# --- catalog arrives (incremental sync from the server)
+- extendedWaitUntil:
+    visible:
+      id: title-card-0
+    timeout: 60000
+- runFlow: no-errors.yaml
+- copyTextFrom:
+    id: title-card-0
+- evalScript: ${output.firstTitle = maestro.copiedText}
+
+# --- download the first listed chapter
+- tapOn:
+    id: title-card-0
+- extendedWaitUntil:
+    visible:
+      id: download-button-0
+    timeout: 30000
+- tapOn:
+    id: download-button-0
+- extendedWaitUntil:
+    visible:
+      id: chapter-badge-0
+      text: baixado
+    timeout: 180000
+- runFlow: no-errors.yaml
+
+# --- server goes down; app is closed and reopened
+- runScript:
+    file: control.js
+    env:
+      CONTROL_PORT: ${CONTROL_PORT}
+      ACTION: stop
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: title-card-0
+    timeout: 30000
+- runFlow: no-errors.yaml
+- assertVisible: ${output.firstTitle}
+
+# --- read the downloaded chapter offline
+- tapOn:
+    id: title-card-0
+- extendedWaitUntil:
+    visible:
+      id: chapter-badge-0
+      text: baixado
+    timeout: 20000
+- runFlow: no-errors.yaml
+- tapOn:
+    id: chapter-row-0
+- extendedWaitUntil:
+    visible:
+      id: page-0
+    timeout: 30000
+- assertNotVisible: "Toque para tentar de novo"
+- runFlow: no-errors.yaml
+- back
+
+# --- a chapter that was never saved: quiet message, queue for later
+- tapOn:
+    id: chapter-row-1
+- extendedWaitUntil:
+    visible: "Este capítulo não está disponível offline"
+    timeout: 20000
+- assertVisible: "Baixar quando disponível"
+- runFlow: no-errors.yaml
+- tapOn: "Baixar quando disponível"
+- extendedWaitUntil:
+    visible: "Na fila de download.*"
+    timeout: 10000
+- runFlow: no-errors.yaml
+
+# --- server returns; a manual sync lets the queued job finish
+- runScript:
+    file: control.js
+    env:
+      CONTROL_PORT: ${CONTROL_PORT}
+      ACTION: start
+- back
+- back
+- tapOn: "Configurações"
+- extendedWaitUntil:
+    visible:
+      id: settings-sync
+    timeout: 20000
+- tapOn:
+    id: settings-sync
+- runFlow: no-errors.yaml
+- back
+- tapOn:
+    id: title-card-0
+- extendedWaitUntil:
+    visible:
+      id: chapter-badge-1
+      text: baixado
+    timeout: 240000
+- runFlow: no-errors.yaml
