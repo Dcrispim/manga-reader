@@ -1,4 +1,5 @@
 import { eq } from 'drizzle-orm';
+import { DEFAULT_LIMITS } from '@manga/core';
 
 import { settings } from '../db/schema';
 import type { Db } from '../db/types';
@@ -6,6 +7,13 @@ import type { Db } from '../db/types';
 export const DEFAULTS = {
   'server.host': 'localhost',
   'server.port': '3993',
+  'space.maxPerTitle': String(DEFAULT_LIMITS.maxPerTitle),
+  'space.maxGlobal': String(DEFAULT_LIMITS.maxGlobal),
+  'space.maxBytes': String(DEFAULT_LIMITS.maxBytes),
+  'space.minFreeBytes': String(DEFAULT_LIMITS.minFreeBytes),
+  'space.transientMaxBytes': String(DEFAULT_LIMITS.transientMaxBytes),
+  'downloads.autoNext': 'false',
+  'downloads.highRes': 'false',
 } as const;
 
 /**

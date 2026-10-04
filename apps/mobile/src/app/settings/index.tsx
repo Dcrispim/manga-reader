@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   Alert,
@@ -15,6 +15,7 @@ import { DEFAULTS, getSetting, setSetting } from '../../settings/repo';
 import { acceptPendingServer, testAddress } from '../../server/status';
 import { refreshServer, useServerStatus } from '../../server/useServerStatus';
 import { ServerStatusPill } from '../../ui/ServerStatusPill';
+import { runCycle } from '../../sync/cycle';
 
 function parsePort(text: string): number | null {
   if (!/^\d+$/.test(text.trim())) return null;
@@ -32,6 +33,7 @@ export default function SettingsScreen() {
   const [message, setMessage] = useState<string | null>(null);
   const [passed, setPassed] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   // "Manter" hides the banner until the status changes; the status itself
   // stays mismatch, so sync engines keep not running.
   const [dismissedFor, setDismissedFor] = useState<string | null>(null);
@@ -161,6 +163,25 @@ export default function SettingsScreen() {
       >
         <Text style={styles.buttonText}>Salvar</Text>
       </Pressable>
+
+      <Text style={styles.section}>Sincronização</Text>
+      <Pressable
+        accessibilityRole="button"
+        style={styles.button}
+        disabled={syncing}
+        onPress={() => {
+          setSyncing(true);
+          void runCycle({ mode: 'foreground' }).finally(() => setSyncing(false));
+        }}
+      >
+        <Text style={styles.buttonText}>{syncing ? 'Sincronizando...' : 'Sincronizar agora'}</Text>
+      </Pressable>
+
+      <Text style={styles.section}>Mais</Text>
+      <Link href="/settings/storage" style={styles.link}>Armazenamento</Link>
+      <Link href="/settings/queue" style={styles.link}>Fila de downloads</Link>
+      <Link href="/settings/bind" style={styles.link}>Sincronizar progresso</Link>
+      <Link href="/settings/diagnostics" style={styles.link}>Diagnóstico</Link>
     </ScrollView>
   );
 }
@@ -173,5 +194,6 @@ const styles = StyleSheet.create({
   button: { backgroundColor: '#208AEF', padding: 12, borderRadius: 6, alignItems: 'center' },
   buttonText: { color: '#fff' },
   banner: { backgroundColor: '#fff3cd', padding: 10, borderRadius: 6, gap: 6 },
-  link: { color: '#208AEF' },
+  link: { color: '#208AEF', fontSize: 16, paddingVertical: 6 },
+  section: { fontSize: 17, fontWeight: '600', marginTop: 12 },
 });
