@@ -18,5 +18,3 @@ jobs:
       - run: pnpm test
       - run: pnpm --filter @manga/server build
       - run: pnpm typecheck
-        continue-on-error: true
-        # TODO: make this required in M2-09 when all type errors are fixed

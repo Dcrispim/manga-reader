@@ -8,7 +8,8 @@
     "lint": "next lint",
     "build": "next build",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@manga/core": "workspace:*",
@@ -46,6 +47,7 @@
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
     "@types/better-sqlite3": "^9.6.0",
+    "@types/lodash": "^4.17.25",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
