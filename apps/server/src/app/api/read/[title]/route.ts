@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { readdir, stat } from "fs/promises";
 import path from "path";
+import { chapterNumber, pickChapterDirs, sortedChapterNumbers } from "@manga/core";
 import { MANGA_ROOT } from "@/utils/paths.server";
 
 export async function GET(
@@ -16,35 +17,25 @@ export async function GET(
     // Lê todos os diretórios dentro do título
     let chapters = await readdir(titlePath);
 
-    // Filtra diretórios inválidos e agrupa por número (ex.: "566" e "0566" são o mesmo capítulo)
-    const byNum = new Map<number, string>();
-    const pageCount = new Map<string, number>();
+    // Group by chapter number ("566" and "0566" are the same chapter); the
+    // core picks the fullest folder. Only duplicated numbers need a file count.
+    const numCounts = new Map<number, number>();
     for (const chap of chapters) {
-      const num = parseFloat(chap);
-      if (isNaN(num)) continue;
-
-      const current = byNum.get(num);
-      if (!current) {
-        byNum.set(num, chap);
-        continue;
-      }
-
-      // Duplicata numérica: mantém o diretório com mais páginas (mais completo)
-      if (!pageCount.has(current)) {
-        pageCount.set(current, (await readdir(path.join(titlePath, current))).length);
-      }
-      if (!pageCount.has(chap)) {
-        pageCount.set(chap, (await readdir(path.join(titlePath, chap))).length);
-      }
-      if ((pageCount.get(chap) ?? 0) > (pageCount.get(current) ?? 0)) {
-        byNum.set(num, chap);
-      }
+      const num = chapterNumber(chap);
+      if (num !== null) numCounts.set(num, (numCounts.get(num) ?? 0) + 1);
     }
-
-    // Ordena os capítulos numericamente únicos
-    const sortedChapters = [...byNum.entries()]
-      .sort((a, b) => a[0] - b[0])
-      .map(([, name]) => name);
+    const entries: { name: string; fileCount: number }[] = [];
+    for (const chap of chapters) {
+      const num = chapterNumber(chap);
+      if (num === null) continue;
+      const fileCount =
+        (numCounts.get(num) ?? 0) > 1
+          ? (await readdir(path.join(titlePath, chap))).length
+          : 0;
+      entries.push({ name: chap, fileCount });
+    }
+    const byNum = pickChapterDirs(entries);
+    const sortedChapters = sortedChapterNumbers(byNum).map((n) => byNum.get(n)!);
 
     const modified: Record<string, number> = {};
     await Promise.all(

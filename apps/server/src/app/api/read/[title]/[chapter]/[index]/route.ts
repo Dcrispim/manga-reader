@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import path from "path";
 import mime from "mime";
 import { readdir, readFile } from "fs/promises";
+import { sortImageFiles } from "@manga/core";
 import { resolveChapterDir } from "@/utils/chapterDir.server";
 import { MANGA_ROOT } from "@/utils/paths.server";
 
@@ -23,17 +24,7 @@ export async function GET(
   try {
     let files = await readdir(chapterPath);
 
-    files = files.filter((file) => mime.getType(file)?.startsWith("image/"));
-
-    files.sort((a, b) => {
-      const nameA = path.parse(a).name;
-      const nameB = path.parse(b).name;
-
-      const numA = /^\d+$/.test(nameA) ? parseInt(nameA, 10) : Infinity;
-      const numB = /^\d+$/.test(nameB) ? parseInt(nameB, 10) : Infinity;
-
-      return numA - numB || nameA.localeCompare(nameB);
-    });
+    files = sortImageFiles(files);
 
     const index = parseInt(indexPage, 10);
     if (isNaN(index) || index < 0 || index >= files.length) {
