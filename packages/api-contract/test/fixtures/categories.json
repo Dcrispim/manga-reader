@@ -1,0 +1,29 @@
+{
+  "categories": [
+    {
+      "count": 2,
+      "id": "todos",
+      "name": "Todos"
+    },
+    {
+      "count": 2,
+      "id": "recentes",
+      "name": "Recentes"
+    },
+    {
+      "count": 2,
+      "id": "menos-de-100",
+      "name": "Menos de 100 capítulos"
+    },
+    {
+      "count": 1,
+      "id": "ação",
+      "name": "Ação"
+    },
+    {
+      "count": 1,
+      "id": "comédia",
+      "name": "Comédia"
+    }
+  ]
+}
