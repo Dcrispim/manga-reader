@@ -1,0 +1,166 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`GET /api/list > lists visible titles only 1`] = `
+[
+  {
+    "caps": 5,
+    "description": "Description for Alpha",
+    "link": "/read/alpha",
+    "name": "Alpha",
+    "thumb": "/api/read/Alpha/01/thumb",
+  },
+  {
+    "caps": 2,
+    "description": "Description for Beta",
+    "link": "/read/beta",
+    "name": "Beta",
+    "thumb": "/api/read/Beta/01/thumb",
+  },
+]
+`;
+
+exports[`GET /api/metadata/[title] > Alpha: empty metadata and cropped thumb 1`] = `
+{
+  "author": "",
+  "categories": [],
+  "demographic": "",
+  "description": "",
+  "published": "",
+  "status": "",
+  "thumbSource": "crop",
+  "type": "",
+  "volumes": "",
+}
+`;
+
+exports[`GET /api/metadata/[title] > Beta: parsed metadata and curated thumb 1`] = `
+{
+  "author": "Fulano",
+  "categories": [
+    "action",
+    "Comedy",
+  ],
+  "demographic": "",
+  "description": "a=b",
+  "published": "",
+  "status": "",
+  "thumbSource": "curated",
+  "type": "",
+  "volumes": "",
+}
+`;
+
+exports[`GET /api/read/[title] > dedupes 566/0566 keeping 0566 and ignores non-numeric folders 1`] = `
+{
+  "chapters": [
+    "1",
+    "2",
+    "0566",
+  ],
+  "modified": {
+    "0566": "number",
+    "1": "number",
+    "2": "number",
+  },
+}
+`;
+
+exports[`GET /api/read/[title]/[chapter] > Alpha/566 resolves to the 0566 folder (4 images) 1`] = `
+{
+  "images": [
+    "/api/read/Alpha/566/0",
+    "/api/read/Alpha/566/1",
+    "/api/read/Alpha/566/2",
+    "/api/read/Alpha/566/3",
+  ],
+}
+`;
+
+exports[`GET /api/read/[title]/[chapter] > lists Alpha/1 images in numeric order, ignoring notes.txt 1`] = `
+{
+  "images": [
+    "/api/read/Alpha/1/0",
+    "/api/read/Alpha/1/1",
+    "/api/read/Alpha/1/2",
+  ],
+}
+`;
+
+exports[`GET /api/read/[title]/[chapter] > returns 404 for a missing chapter 1`] = `
+{
+  "error": "Capítulo não encontrado",
+}
+`;
+
+exports[`GET /api/read/[title]/[chapter]/[index] > returns 404 for a missing chapter and 400 for an out-of-range index 1`] = `
+{
+  "miss": 404,
+  "oob": 400,
+  "oobBody": {
+    "error": "Página fora do limite",
+  },
+}
+`;
+
+exports[`GET /api/read/[title]/[chapter]/thumb > falls back to the first page of the chapter for Alpha 1`] = `
+{
+  "contentType": "image/jpeg",
+  "status": 200,
+}
+`;
+
+exports[`GET /api/read/[title]/[chapter]/thumb > returns the curated .thumb for Beta 1`] = `
+{
+  "contentType": "image/jpeg",
+  "status": 200,
+}
+`;
+
+exports[`categories > GET /api/categories 1`] = `
+{
+  "categories": [
+    {
+      "count": 2,
+      "id": "todos",
+      "name": "Todos",
+    },
+    {
+      "count": 2,
+      "id": "recentes",
+      "name": "Recentes",
+    },
+    {
+      "count": 2,
+      "id": "menos-de-100",
+      "name": "Menos de 100 capítulos",
+    },
+    {
+      "count": 1,
+      "id": "ação",
+      "name": "Ação",
+    },
+    {
+      "count": 1,
+      "id": "comédia",
+      "name": "Comédia",
+    },
+  ],
+}
+`;
+
+exports[`categories > GET /api/categories/[categoryId] 1`] = `
+{
+  "Action": {
+    "titles": [],
+  },
+  "action": {
+    "titles": [],
+  },
+  "comedy": {
+    "titles": [],
+  },
+  "nonexistent": {
+    "titles": [],
+  },
+}
+`;
