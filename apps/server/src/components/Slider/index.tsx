@@ -1,6 +1,6 @@
 'use client'
 import { Slider as ShadSlider } from '@/components/ui/slider'
-import React, { CSSProperties } from 'react'
+import React from 'react'
 export interface SliderProps {
   min?: number
   max?: number
@@ -34,11 +34,6 @@ const Slider: React.FC<SliderProps> = ({
   }
 
   const isHorizontal = orientation === 'horizontal'
-  const trackStyle = isHorizontal
-    ? ({
-        backgroundSize: `${((value - min) / (max - min)) * 100}% 100%`,
-      } as CSSProperties)
-    : ({ marginTop: '50%' } as CSSProperties)
 
   const getNodePosition = (nodeValue: number) => {
     const position = ((nodeValue - min) / (max - min)) * 100

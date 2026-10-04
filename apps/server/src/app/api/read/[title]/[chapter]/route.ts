@@ -26,7 +26,7 @@ export async function GET(
     const chapterPath = path.join(titlePath, chapterDir);
 
     // Lista todos os arquivos do capítulo
-    let files = await readdir(chapterPath);
+    const files = await readdir(chapterPath);
 
     // Filter images and order them (rules live in the core)
     const imageFiles = sortImageFiles(files);
@@ -35,7 +35,7 @@ export async function GET(
     const imagePaths = imageFiles.map((_, i) => `/api/read/${mangaTitle}/${chapterNumber}/${i}`);
 
     return NextResponse.json({ images: imagePaths });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Erro ao processar os arquivos" }, { status: 500 });
   }
 }

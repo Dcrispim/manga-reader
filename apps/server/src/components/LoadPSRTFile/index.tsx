@@ -2,23 +2,21 @@
 import i18n from '@/services/i18n'
 import { parsePSRT } from '@/services/psrt/parserPSRT'
 import { PSRTFile } from '@/services/psrt/types'
-import { RefObject } from 'react'
+
 import { Button } from '../ui/button'
 
 export function LoadPSRTFile({
   onLoad,
   className,
-  ref,
 }: {
   onLoad: (_psrtFile: PSRTFile, _fileName: string) => void
   className?: string
-  ref?: RefObject<HTMLLabelElement>
 }) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     e.stopPropagation()
     e.preventDefault()
     const file = e.target.files?.[0]
-
 
     if (file) {
       const text = await file.text()

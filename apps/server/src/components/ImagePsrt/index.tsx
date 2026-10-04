@@ -25,7 +25,6 @@ export default function ImagePsrt({
   selectedIndex?: number
   pageLink?: string
   parentZoom?: number
-  // eslint-disable-next-line unused-imports/no-unused-vars
   getSize?: ({ w, h }: { w?: number; h?: number }) => void
 }) {
   const imageRef = useRef<HTMLImageElement>(null)
@@ -55,13 +54,9 @@ export default function ImagePsrt({
           {parentZoom &&
             editor &&
             pageData?.entries.map((entry: PSRTEntry, index: number) => {
-              const {
-                fontSize,
-                border,
-                borderWidth,
-                borderColor,
-                ...parsedStyles
-              } = styleParser(entry, imageRef)
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars -- excluded from parsedStyles on purpose
+              const { fontSize, border, borderWidth, borderColor, ...parsedStyles } = styleParser(entry, imageRef)
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars -- excluded from parsedStyles on purpose
               const { style, ...coordinates } = entry
 
               return (
@@ -106,6 +101,7 @@ export default function ImagePsrt({
                   entry,
                   imageRef
                 )
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars -- excluded from coordinates on purpose
                 const { style, ...coordinates } = entry
 
                 return (
@@ -139,6 +135,7 @@ export default function ImagePsrt({
                   entry,
                   imageRef
                 )
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars -- excluded from coordinates on purpose
                 const { style, ...coordinates } = entry
 
                 return (
@@ -265,7 +262,7 @@ const styleParser = (
   if (width) {
     _.set(newStyle, 'fontSize', parsePercentToPx(entry.size, width))
 
-    style?.lineHeight &&
+    if (style?.lineHeight) {
       _.set(
         newStyle,
         'lineHeight',
@@ -274,8 +271,9 @@ const styleParser = (
           width
         )
       )
+    }
 
-    style?.borderWidth &&
+    if (style?.borderWidth) {
       _.set(
         newStyle,
         'borderWidth',
@@ -284,6 +282,7 @@ const styleParser = (
           width
         )
       )
+    }
 
     if (balloon !== 'none' && balloons[balloon]) {
       const MyBackgroundSvg = balloons[balloon] as typeof SpechBaloonSvg
@@ -300,13 +299,12 @@ const styleParser = (
       _.set(newStyle, 'backgroundImage', `url(${svgDataUrl})`)
     }
   }
-  if (entry.size) {
-    style?.WebkitTextStrokeWidth &&
-      _.set(
-        newStyle,
-        'WebkitTextStrokeWidth',
-        `${entry.size * (parseFloat(style?.WebkitTextStrokeWidth?.toString() || '0') / 100)}px`
-      )
+  if (entry.size && style?.WebkitTextStrokeWidth) {
+    _.set(
+      newStyle,
+      'WebkitTextStrokeWidth',
+      `${entry.size * (parseFloat(style?.WebkitTextStrokeWidth?.toString() || '0') / 100)}px`
+    )
   }
 
   return newStyle

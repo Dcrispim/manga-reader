@@ -47,7 +47,7 @@ export async function GET(
         "Content-Length": fileBuffer.length.toString(),
       },
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Erro ao processar a imagem" }, { status: 500 });
   }
 }

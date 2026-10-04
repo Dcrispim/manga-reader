@@ -21,7 +21,7 @@ export const makeFontURL = (fonts: { family: string; weight?: number }[]) => {
 
 export const getFontsFromUrl = (urlFont: string) => {
   const fonts = new URL(urlFont).searchParams.getAll('family').map((f) => {
-    let font = f.split(':')
+    const font = f.split(':')
     return {
       family: font[0],
       weight: font[1] ? parseInt(font[1].replaceAll('wght@', '')) : undefined,
@@ -40,7 +40,7 @@ export const getFonts = (
   urlFont: string[]
 ): { id: string; value: string }[] => {
   try {
-    //@ts-ignore
+    //@ts-expect-error optional chaining on array reduce
     return urlFont?.reduce((p, c) => {
       try {
         if (isFontUrl(c)) {
@@ -57,7 +57,7 @@ export const getFonts = (
             { id: c.split('/')[0].replaceAll(' ', '-'), name: c.split('/')[0] },
           ]
         }
-      } catch (e) {
+      } catch {
         console.log(c)
       }
     }, [])

@@ -1,6 +1,6 @@
 import { readdir } from "fs/promises";
 import path from "path";
-import { chapterNumber, pickChapterDirs } from "@manga/core";
+import { pickChapterDirs } from "@manga/core";
 
 // Vários downloads podem gerar pastas diferentes para o mesmo capítulo
 // (ex.: "566" e "0566"). Resolve para a pasta com mais páginas, que é a

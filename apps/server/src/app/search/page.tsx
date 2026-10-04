@@ -1,17 +1,17 @@
 'use client'
 
 import { Suspense, useEffect, useState } from 'react'
-import { useParams, useRouter, useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { LucideSearch, LucideArrowLeft } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { THUMB_SIZE } from '@/utils/consts'
+
 import Card from '@/components/Card'
 
 function SearchPage() {
   const router = useRouter()
   const searchParams  = useSearchParams()
   const [query, setQuery] = useState(searchParams .get("q") as string || '')
-  const [results, setResults] = useState<any[]>([])
+  const [results, setResults] = useState<{ name: string; thumb: string; description: string; caps: string; link: string }[]>([])
   const [isLoading, setIsLoading] = useState(false)
 
   // Perform search when query changes
@@ -73,7 +73,7 @@ function SearchPage() {
         </div>
       ) : query && results.length === 0 ? (
         <div className="text-center py-8 text-gray-500">
-          No results found for "{query}"
+          No results found for &quot;{query}&quot;
         </div>
       ) : (
         <div className={cn('grid gap-8 w-full')} 
@@ -94,8 +94,12 @@ function SearchPage() {
   )
 }
 
-export default function (){
+const SearchPageWrapper = () => {
   return <Suspense>
     <SearchPage />
   </Suspense>
 }
+
+SearchPageWrapper.displayName = 'SearchPageWrapper'
+
+export default SearchPageWrapper

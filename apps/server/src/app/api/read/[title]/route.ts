@@ -15,7 +15,7 @@ export async function GET(
     const titlePath = path.join(MANGA_ROOT, mangaTitle);
 
     // Lê todos os diretórios dentro do título
-    let chapters = await readdir(titlePath);
+    const chapters = await readdir(titlePath);
 
     // Group by chapter number ("566" and "0566" are the same chapter); the
     // core picks the fullest folder. Only duplicated numbers need a file count.
@@ -50,7 +50,7 @@ export async function GET(
     );
 
     return NextResponse.json({ chapters: sortedChapters, modified });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Erro ao listar capítulos" }, { status: 500 });
   }
 }

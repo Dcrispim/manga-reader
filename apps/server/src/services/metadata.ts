@@ -112,6 +112,7 @@ export async function getTitlesByCategory(categoryId: string): Promise<Omit<Titl
   const titleNames = new Set(category.titles)
   const filteredTitles = allTitles
     .filter((t) => titleNames.has(t.name))
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- destructuring to exclude fields from response
     .map(({ modifiedAt, categories, author, ...rest }) => rest)
 
   return filteredTitles

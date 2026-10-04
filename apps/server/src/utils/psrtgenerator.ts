@@ -40,5 +40,3 @@ export const generatePSRTText = (pages: number, entriesPerPage: number) => {
 
   return psrtText
 }
-
-const MOCK_PSRT_TEXT = generatePSRTText(50, 4)

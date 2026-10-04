@@ -28,7 +28,7 @@ export async function GET() {
     );
 
     return NextResponse.json(titleList);
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Erro ao listar títulos" }, { status: 500 });
   }
 }
