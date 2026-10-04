@@ -1,9 +1,11 @@
-node_modules
-dist
-.next
+**/node_modules
+**/dist
+**/.next
 out
 .git
 .env*
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+.code_rag
+index.faiss
+apps/mobile
+docs
+*.log
