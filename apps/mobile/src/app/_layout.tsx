@@ -4,6 +4,8 @@ import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
 import { db, useMigrationsGate } from "../db/client";
 import { getSetting } from "../settings/repo";
+import { expoFileStore } from "../storage/files";
+import { reconcile } from "../storage/downloads";
 
 const centered = {
   flex: 1,
@@ -18,6 +20,15 @@ function FirstRunRedirect() {
   useEffect(() => {
     if (!getSetting(db, "server.host")) router.replace("/settings");
   }, [router]);
+  return null;
+}
+
+// Startup reconciliation of downloaded files vs. SQLite. Fire-and-forget so it
+// never blocks the UI, and the catch keeps it from ever throwing.
+function ReconcileOnStart() {
+  useEffect(() => {
+    reconcile(db, expoFileStore).catch(() => {});
+  }, []);
   return null;
 }
 
@@ -45,6 +56,7 @@ function MigrationGate({ onRestart }: { onRestart: () => void }) {
   return (
     <>
       <Stack screenOptions={{ headerShown: false }} />
+      <ReconcileOnStart />
       <FirstRunRedirect />
     </>
   );

@@ -57,6 +57,8 @@ export function memoryFileStore(
       files.delete(p);
       dirs.delete(p);
       for (const k of [...files.keys()]) if (k.startsWith(`${p}/`)) files.delete(k);
+      // Empty child directories (e.g. left by a move) go too, like a recursive delete.
+      for (const d of [...dirs]) if (d.startsWith(`${p}/`)) dirs.delete(d);
       return true;
     },
     async exists(path) {
