@@ -1,4 +1,4 @@
-import { Stack, useLocalSearchParams } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import { useEffect, useMemo, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
@@ -117,14 +117,21 @@ export default function TitleScreen() {
 }
 
 function ChapterItem({ title, row, online }: { title: string; row: ChapterRow; online: boolean }) {
+  const router = useRouter();
   const label = badgeLabel(row.badge);
   const canDownload = row.onServer && (row.badge.kind === "none" || row.badge.kind === "cached");
   return (
     <View style={[styles.row, row.read && styles.rowRead]}>
-      <View style={{ flex: 1 }}>
+      <Pressable
+        style={{ flex: 1 }}
+        accessibilityRole="button"
+        onPress={() =>
+          router.push({ pathname: "/read/[title]/[chapter]", params: { title, chapter: row.chapter } })
+        }
+      >
         <Text>{`Capítulo ${row.chapter}${row.pages ? ` · ${row.pages} págs.` : ""}`}</Text>
         {label ? <Text style={styles.badge}>{label}</Text> : null}
-      </View>
+      </Pressable>
       {canDownload ? (
         <Pressable accessibilityRole="button" onPress={() => enqueueAndDrain(db, "download", title, row.chapter)}>
           <Text style={styles.link}>{online ? "Baixar" : "Baixar quando disponível"}</Text>
