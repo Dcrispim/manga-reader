@@ -1,0 +1,16 @@
+src/app/api/bind/[code]/route.ts
+src/app/api/bind/route.ts
+src/app/api/categories/[categoryId]/route.ts
+src/app/api/categories/route.ts
+src/app/api/list/route.ts
+src/app/api/metadata/[title]/route.ts
+src/app/api/read/[title]/[chapter]/[index]/route.ts
+src/app/api/read/[title]/[chapter]/route.ts
+src/app/api/read/[title]/[chapter]/thumb/route.ts
+src/app/api/read/[title]/[chapter]/upscale/route.ts
+src/app/api/read/[title]/[chapter]/xl/[index]/route.ts
+src/app/api/read/[title]/[chapter]/xl/[index]/[slice]/route.ts
+src/app/api/read/[title]/[chapter]/xl/route.ts
+src/app/api/read/[title]/route.ts
+src/app/api/search/rebuild/route.ts
+src/app/api/search/route.ts
