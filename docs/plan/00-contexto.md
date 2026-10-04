@@ -50,8 +50,10 @@ Este arquivo é o único contexto global necessário. Cada etapa (`mX-YY-*.md`) 
    ```
 
    Com volumes `:ro`, `POST /api/bind` retorna 500 — **esperado**, não é regressão.
-7. **Nunca** usar `pkill`, `killall` ou `kill` por nome/padrão: processos do container estável aparecem na tabela de processos do host. Encerrar só o PID que a própria etapa iniciou (guarde `$!`).
-8. Os dados reais em `/mnt/d/manga` são **somente leitura** para qualquer teste. Testes usam bibliotecas sintéticas em diretórios temporários.
+7. O shell do usuário é **fish**: para processos em background, use `bash -c 'cmd & echo $! > /tmp/claude-1000/<etapa>.pid'` e encerre lendo esse arquivo.
+   **Nunca** usar `pkill`, `killall` ou `kill` por nome/padrão: processos do container estável aparecem na tabela de processos do host. Encerrar só o PID que a própria etapa iniciou (guarde `$!`).
+8. Escrita em disco **só** dentro do repositório/worktree, de `/tmp/claude-1000/`, de `os.tmpdir()` (para fixtures pequenas) e de `~/.cache/`. Qualquer outro lugar (outros discos, `/mnt/*`): **pare e reporte**. Atenção: o btrfs de `/home` tem pouco espaço de metadados — não gere centenas de milhares de arquivos sem necessidade.
+9. Os dados reais em `/mnt/d/manga` são **somente leitura** para qualquer teste. Testes usam bibliotecas sintéticas em diretórios temporários.
 
 ## Branches e commits
 
