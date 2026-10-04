@@ -144,6 +144,28 @@ importers:
         specifier: ^5.0.3
         version: 5.0.3(@types/node@20.17.30)(@vitest/coverage-v8@5.0.3)(msw@2.12.10(@types/node@20.17.30)(typescript@5.8.3))(vite@8.3.2(@types/node@20.17.30)(jiti@2.4.2))
 
+  packages/api-contract:
+    dependencies:
+      '@manga/core':
+        specifier: workspace:*
+        version: link:../core
+      zod:
+        specifier: ^3.24.2
+        version: 3.25.76
+    devDependencies:
+      eslint:
+        specifier: ^9
+        version: 9.24.0(jiti@2.4.2)
+      typescript:
+        specifier: ^5
+        version: 5.8.3
+      typescript-eslint:
+        specifier: ^8.29.0
+        version: 8.71.0(eslint@9.24.0(jiti@2.4.2))(typescript@5.8.3)
+      vitest:
+        specifier: ^5.0.3
+        version: 5.0.3(@types/node@20.17.30)(@vitest/coverage-v8@5.0.3)(msw@2.12.10(@types/node@20.17.30)(typescript@5.8.3))(vite@8.3.2(@types/node@20.17.30)(jiti@2.4.2))
+
   packages/core:
     dependencies:
       mime:
