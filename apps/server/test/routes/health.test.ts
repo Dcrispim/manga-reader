@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from 'vitest'
 import fs from 'fs/promises'
-import os from 'os'
 import path from 'path'
 import { makeLibrary, DEFAULT_SPEC, type LibraryResult } from '../fixtures/makeLibrary'
+import { makeTestDir } from '../fixtures/testDir'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 let lib: LibraryResult
@@ -33,7 +33,7 @@ describe('health endpoint', () => {
 
   it('includes serverId and it persists across calls', async () => {
     // Use a fresh temp dir for this test
-    const testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'health-test-'))
+    const testDir = await makeTestDir('health-test-')
     const originalMangaRoot = process.env.MANGA_ROOT
     const serverIdPath = path.join(testDir, '.server-id')
     process.env.MANGA_ROOT = testDir
@@ -59,7 +59,6 @@ describe('health endpoint', () => {
       expect(fileContent.trim()).toBe(body1.serverId)
     } finally {
       // Cleanup
-      await fs.chmod(testDir, 0o755)
       await fs.rm(testDir, { recursive: true, force: true })
       process.env.MANGA_ROOT = originalMangaRoot
       delete process.env.SERVER_ID_PATH
@@ -67,7 +66,7 @@ describe('health endpoint', () => {
   })
 
   it('uses pre-existing server id file', async () => {
-    const testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'health-test-'))
+    const testDir = await makeTestDir('health-test-')
     const originalMangaRoot = process.env.MANGA_ROOT
     const serverIdPath = path.join(testDir, '.server-id')
     process.env.MANGA_ROOT = testDir
@@ -83,7 +82,6 @@ describe('health endpoint', () => {
       expect(body.serverId).toBe(existingId)
     } finally {
       // Cleanup
-      await fs.chmod(testDir, 0o755)
       await fs.rm(testDir, { recursive: true, force: true })
       process.env.MANGA_ROOT = originalMangaRoot
       delete process.env.SERVER_ID_PATH
@@ -91,14 +89,15 @@ describe('health endpoint', () => {
   })
 
   it('returns 200 without serverId in read-only directory', async () => {
-    const testDir = await fs.mkdtemp(path.join(os.tmpdir(), 'health-test-'))
+    const testDir = await makeTestDir('health-test-')
     const originalMangaRoot = process.env.MANGA_ROOT
-    const serverIdPath = path.join(testDir, '.server-id')
+    // Point SERVER_ID_PATH to an impossible location: a path nested inside a regular file
+    // This simulates write-protection without relying on chmod (important for NTFS filesystems)
+    const blockingFile = path.join(testDir, 'blocking-file')
+    await fs.writeFile(blockingFile, 'this is a file, not a directory')
+    const serverIdPath = path.join(blockingFile, '.server-id')
     process.env.MANGA_ROOT = testDir
     process.env.SERVER_ID_PATH = serverIdPath
-
-    // Make directory read-only
-    await fs.chmod(testDir, 0o555)
 
     try {
       const route = await import('@/app/api/health/route')
@@ -109,8 +108,7 @@ describe('health endpoint', () => {
       expect(typeof body.version).toBe('string')
       expect(Array.isArray(body.features)).toBe(true)
     } finally {
-      // Cleanup - make writable first
-      await fs.chmod(testDir, 0o755)
+      // Cleanup
       await fs.rm(testDir, { recursive: true, force: true })
       process.env.MANGA_ROOT = originalMangaRoot
       delete process.env.SERVER_ID_PATH

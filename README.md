@@ -54,6 +54,14 @@ pnpm test
 
 Executa Vitest em `packages/*` e `apps/server`; jest-expo em `apps/mobile`.
 
+**Conteúdo de teste:** por padrão, arquivos temporários de teste vão para `MANGA_TEST_DIR` (se definido) ou `os.tmpdir()`. Para usar uma base customizada (ex.: em CI ou em disco específico):
+
+```bash
+MANGA_TEST_DIR=/mnt/d/manga-reader-tests/vitest pnpm test
+```
+
+O diretório é criado automaticamente se não existir. Cada teste apaga seu próprio diretório no cleanup.
+
 ### Verificação de tipos
 
 ```bash

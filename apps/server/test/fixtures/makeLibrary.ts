@@ -1,7 +1,7 @@
 import fs from 'fs/promises'
 import path from 'path'
-import os from 'os'
 import sharp from 'sharp'
+import { makeTestDir } from './testDir'
 
 export interface LibrarySpec {
   titles: TitleSpec[]
@@ -88,9 +88,8 @@ async function generateThumbnail(): Promise<Buffer> {
 }
 
 export async function makeLibrary(spec: LibrarySpec): Promise<LibraryResult> {
-  const tmpDir = os.tmpdir()
-  const root = await fs.mkdtemp(path.join(tmpDir, 'manga-test-'))
-  const xlRoot = await fs.mkdtemp(path.join(tmpDir, 'manga-test-xl-'))
+  const root = await makeTestDir('manga-test-')
+  const xlRoot = await makeTestDir('manga-test-xl-')
 
   try {
     // Create all titles
