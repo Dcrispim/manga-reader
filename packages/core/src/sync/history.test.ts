@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getLatestChapter, type TitleHistory } from './history'
+import { getLatestChapter, recordChapterOpen, type TitleHistory } from './history'
 
 describe('history.ts', () => {
   describe('getLatestChapter', () => {
@@ -96,5 +96,46 @@ describe('history.ts', () => {
       // not '5' which is first in the history array
       expect(result).toBe('1')
     })
+  })
+})
+
+describe('recordChapterOpen', () => {
+  it('stamps the timestamp on first open', () => {
+    const out = recordChapterOpen({}, 'T', '1', 1000)
+    expect(out.T).toEqual({ lastRead: 1000, history: ['1'], openedAt: { '1': 1000 } })
+  })
+
+  it('does not rewrite the timestamp on reopen', () => {
+    const first = recordChapterOpen({}, 'T', '1', 1000)
+    const out = recordChapterOpen(first, 'T', '1', 5000)
+    expect(out.T.openedAt['1']).toBe(1000)
+    expect(out.T.history).toEqual(['1'])
+    expect(out.T.lastRead).toBe(1000)
+  })
+
+  it('keeps at most 5 chapters in history', () => {
+    let h: Record<string, TitleHistory> = {}
+    for (let i = 1; i <= 7; i++) h = recordChapterOpen(h, 'T', String(i), i * 10)
+    expect(h.T.history).toEqual(['3', '4', '5', '6', '7'])
+    expect(Object.keys(h.T.openedAt)).toHaveLength(7)
+  })
+
+  it('sets lastRead to the maximum openedAt', () => {
+    const h0: Record<string, TitleHistory> = {
+      T: { lastRead: 9000, history: ['9'], openedAt: { '9': 9000 } },
+    }
+    const out = recordChapterOpen(h0, 'T', '2', 100)
+    expect(out.T.lastRead).toBe(9000)
+  })
+
+  it('does not mutate the input', () => {
+    const h0: Record<string, TitleHistory> = {
+      T: { lastRead: 10, history: ['1'], openedAt: { '1': 10 } },
+    }
+    const snapshot = JSON.parse(JSON.stringify(h0))
+    const out = recordChapterOpen(h0, 'T', '2', 20)
+    expect(h0).toEqual(snapshot)
+    expect(out).not.toBe(h0)
+    expect(out.T).not.toBe(h0.T)
   })
 })
