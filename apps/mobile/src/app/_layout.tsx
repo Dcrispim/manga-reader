@@ -1,5 +1,6 @@
 import { Stack, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
 import { db, useMigrationsGate } from "../db/client";
@@ -73,20 +74,21 @@ function MigrationGate({ onRestart }: { onRestart: () => void }) {
     );
   }
   return (
-    <>
+    <GestureHandlerRootView style={{ flex: 1 }}>
       <ScreenBoundary>
         <Stack screenOptions={{ headerRight: () => <HeaderPill /> }}>
           <Stack.Screen name="index" options={{ title: "Manga Reader" }} />
           <Stack.Screen name="search" options={{ title: "Buscar" }} />
           <Stack.Screen name="category/[id]" options={{ title: "Categoria" }} />
           <Stack.Screen name="title/[name]" options={{ title: "" }} />
+          <Stack.Screen name="read/[title]/[chapter]" options={{ title: "" }} />
           <Stack.Screen name="settings/index" options={{ title: "Configurações" }} />
         </Stack>
       </ScreenBoundary>
       <ReconcileOnStart />
       <ForegroundSync />
       <FirstRunRedirect />
-    </>
+    </GestureHandlerRootView>
   );
 }
 

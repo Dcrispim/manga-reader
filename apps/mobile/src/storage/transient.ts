@@ -158,7 +158,10 @@ export async function fetchToTransient(input: FetchToTransientInput): Promise<st
     const url = client.url(imagePath);
     if (!url) return null;
     const name = `${String(page + 1).padStart(3, '0')}.${extOf(imagePath)}`;
-    const dest = `${transientChapterDir(files, title, chapter)}/${name}`;
+    const dir = transientChapterDir(files, title, chapter);
+    const dest = `${dir}/${name}`;
+    // The real file store does not create parent directories on download.
+    await files.makeDir(dir);
     const r = await files.download(url, dest);
     if (!r.ok) {
       await files.remove(dest);
