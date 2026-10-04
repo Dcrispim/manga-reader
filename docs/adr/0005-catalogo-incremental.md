@@ -32,3 +32,13 @@ Notas:
 - Cache em memória por título (chave = mtimes da pasta, `.metadata` e `.thumb`): dois clientes com `since=0` não recontam páginas de títulos inalterados. Como o scanner, não enxerga páginas adicionadas dentro de um capítulo existente até o servidor reiniciar.
 - `serverTime` é capturado antes da varredura, então mudanças durante ela aparecem na próxima chamada.
 - A varredura completa a frio (cache de diretórios do SO frio) pode ser bem mais lenta que a medida acima.
+
+## Medições contra a biblioteca real (M3-04)
+
+Imagem `manga-reader:monorepo-test` em container efêmero (porta 3994, biblioteca real `/mnt/d/manga` somente leitura, 59 títulos), via `scripts/smoke.sh --new-only` (curl, sem compressão):
+
+| Chamada | Tempo |
+| --- | --- |
+| `since=0`, primeira chamada (cache do servidor frio) | ~6,2 s |
+| `since=0`, segunda chamada (cache por título quente) | ~0,03 s |
+| `since=<serverTime>` | ~0,012–0,016 s |

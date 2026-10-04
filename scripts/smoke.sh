@@ -5,7 +5,44 @@
 # JSON bodies are compared after `jq -S .`; images by status, content-type and
 # sha256 of the body; "/" by status only (HTML may embed build-specific hashes).
 # Usage: scripts/smoke.sh <baseA> <baseB>
+#        scripts/smoke.sh --new-only <base>
+# --new-only checks /api/health and /api/catalog on the new instance only: the
+# stable container does not have these endpoints, so there is nothing to compare.
 set -euo pipefail
+
+if [ "${1:-}" = "--new-only" ]; then
+  [ $# -eq 2 ] || { echo "usage: $0 --new-only <base>" >&2; exit 2; }
+  N="${2%/}"
+  nfails=0
+  check() { # <description> <jq-filter> <file>
+    if jq -e "$2" "$3" > /dev/null 2>&1; then echo "OK   $1"; else echo "FAIL $1"; nfails=$((nfails + 1)); fi
+  }
+  tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
+  curl -sf "$N/api/list" > "$tmp/list.json" || { echo "base not responding" >&2; exit 2; }
+  curl -sf "$N/api/health" > "$tmp/health.json" || { echo "FAIL /api/health unreachable"; exit 1; }
+  check "/api/health version not empty" '(.version // "") | length > 0' "$tmp/health.json"
+  check "/api/health features has catalog" '.features | index("catalog") != null' "$tmp/health.json"
+  check "/api/health serverId present" '(.serverId // "") | length > 0' "$tmp/health.json"
+
+  t0=$(date +%s.%N)
+  curl -sf "$N/api/catalog?since=0" > "$tmp/full.json" || { echo "FAIL /api/catalog?since=0 unreachable"; exit 1; }
+  t1=$(date +%s.%N)
+  list_n=$(jq 'length' "$tmp/list.json")
+  check "catalog allTitleNames count == /api/list ($list_n)" ".allTitleNames | length == $list_n" "$tmp/full.json"
+  check "catalog every title has non-empty chapters" '(.titles | length > 0) and all(.titles[]; (.chapters | length) > 0)' "$tmp/full.json"
+  st=$(jq -r '.serverTime' "$tmp/full.json")
+
+  t2=$(date +%s.%N)
+  curl -sf "$N/api/catalog?since=$st" > "$tmp/inc.json" || { echo "FAIL incremental unreachable"; exit 1; }
+  t3=$(date +%s.%N)
+  check "catalog?since=serverTime has empty titles" '.titles | length == 0' "$tmp/inc.json"
+
+  awk -v a="$t0" -v b="$t1" 'BEGIN{printf "TIME catalog since=0: %.3f s\n", b-a}'
+  awk -v a="$t2" -v b="$t3" 'BEGIN{printf "TIME catalog since=serverTime: %.3f s\n", b-a}'
+  if [ "$nfails" -gt 0 ]; then echo "FAILED: $nfails checks"; exit 1; fi
+  echo "ALL OK (new-only)"
+  exit 0
+fi
 
 [ $# -eq 2 ] || { echo "usage: $0 <baseA> <baseB>" >&2; exit 2; }
 A="${1%/}"; B="${2%/}"
