@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { readFile, readdir } from "fs/promises";
 import path from "path";
 import mime from "mime";
+import { sortImageFiles } from "@manga/core";
 import { resolveChapterDir } from "@/utils/chapterDir.server";
 import { MANGA_ROOT, THUMB_DIR } from "@/utils/paths.server";
 
@@ -40,19 +41,8 @@ export async function GET(
             // Lista todos os arquivos na pasta do capítulo
             let files = await readdir(chapterPath);
 
-            // Filtra apenas arquivos de imagem
-            files = files.filter(file => mime.getType(file)?.startsWith("image/"));
-
-            // Ordena os arquivos considerando números puros primeiro
-            files.sort((a, b) => {
-                const nameA = path.parse(a).name;
-                const nameB = path.parse(b).name;
-
-                const numA = /^\d+$/.test(nameA) ? parseInt(nameA, 10) : Infinity;
-                const numB = /^\d+$/.test(nameB) ? parseInt(nameB, 10) : Infinity;
-
-                return numA - numB || nameA.localeCompare(nameB);
-            });
+            // Images only, in reading order (rules live in the core)
+            files = sortImageFiles(files);
 
             // Obtém o primeiro arquivo de imagem
             if (files.length === 0) {
