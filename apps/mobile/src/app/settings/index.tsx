@@ -19,6 +19,7 @@ const LINKS = [
   { href: '/settings/storage', label: 'Armazenamento', icon: 'hard-drive' },
   { href: '/settings/queue', label: 'Fila de downloads', icon: 'download' },
   { href: '/settings/bind', label: 'Sincronizar progresso', icon: 'refresh-cw' },
+  { href: '/settings/metadata', label: 'Editar metadados de um título', icon: 'edit-3' },
   { href: '/settings/diagnostics', label: 'Diagnóstico', icon: 'activity' },
 ] as const;
 

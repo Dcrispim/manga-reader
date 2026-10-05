@@ -13,6 +13,7 @@ import { createClient } from "../net/client";
 import { useServerStatus } from "../server/useServerStatus";
 import { Button } from "../ui/Button";
 import { displayName } from "../ui/displayName";
+import { Logo } from "../ui/Logo";
 import { PosterCard } from "../ui/PosterCard";
 import { ServerStatusPill } from "../ui/ServerStatusPill";
 import { Text } from "../ui/Text";
@@ -239,7 +240,7 @@ export default function Home() {
       <ScrollView contentContainerStyle={styles.content}>
         {catalog.length === 0 ? (
           <View style={[styles.empty, { paddingTop: insets.top + 96 }]}>
-            <Feather name="book-open" size={36} color={colors.mutedForeground} />
+            <Logo size={64} opacity={0.8} />
             <Text style={styles.emptyText}>
               Nenhum título ainda. Configure o servidor ou adicione uma pasta local
             </Text>
@@ -291,6 +292,9 @@ export default function Home() {
           </>
         )}
       </ScrollView>
+      <View style={[styles.brand, { top: insets.top + 8, left: pad }]} pointerEvents="none">
+        <Logo size={30} />
+      </View>
       <TopBar top={insets.top} pad={pad} />
     </View>
   );
@@ -311,6 +315,7 @@ const styles = StyleSheet.create({
   heroActions: { flexDirection: "row", gap: 16, flexWrap: "wrap" },
   heroOutline: { borderColor: colors.gray500, borderRadius: radius.md },
   topBar: { position: "absolute", flexDirection: "row", alignItems: "center", gap: 8 },
+  brand: { position: "absolute", height: 32, justifyContent: "center" },
   searchPill: {
     flexDirection: "row",
     alignItems: "center",

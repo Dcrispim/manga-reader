@@ -111,7 +111,7 @@ describe('syncCatalog', () => {
     const alpha = rows.find((r) => r.name === 'Alpha')!;
     expect(alpha.thumbVersion).toBe('v1');
     expect(alpha.thumbPath).toBe(
-      `memory://doc/thumbs/${hashName('Alpha')}.jpg`,
+      `memory://doc/thumbs/${hashName('Alpha')}-${hashName('v1')}.jpg`,
     );
     expect(s.files.files.has(alpha.thumbPath!)).toBe(true);
     expect([...s.files.files.keys()].some((k) => k.endsWith('.tmp'))).toBe(false);
@@ -341,6 +341,29 @@ describe('syncTitleOnDemand (degraded mode)', () => {
   });
 });
 
+describe('cover versions', () => {
+  it('stores a new version under a new file name and removes the old file', async () => {
+    const s = setup();
+    await goOnline(s.db);
+    await syncCatalog({ ...s });
+    const v1 = s.db.select().from(titles).where(eq(titles.name, 'Alpha')).get()!.thumbPath!;
+    s.fetchImpl.mockImplementationOnce(async () =>
+      new Response(
+        JSON.stringify(
+          catalogBody({ serverTime: 2000, full: false, titles: [title('Alpha', [1, 2], 'v2')] }),
+        ),
+        { status: 200 },
+      ),
+    );
+    await syncCatalog({ ...s });
+    const row = s.db.select().from(titles).where(eq(titles.name, 'Alpha')).get()!;
+    expect(row.thumbVersion).toBe('v2');
+    expect(row.thumbPath).toBe(`memory://doc/thumbs/${hashName('Alpha')}-${hashName('v2')}.jpg`);
+    expect(s.files.files.has(row.thumbPath!)).toBe(true);
+    expect(s.files.files.has(v1)).toBe(false);
+  });
+});
+
 describe('cover retry', () => {
   it('retries a failed cover on a later cycle even when the catalog returns nothing', async () => {
     let fail = true;
@@ -362,7 +385,7 @@ describe('cover retry', () => {
     );
     await syncCatalog({ ...s, files });
     const ok = s.db.select().from(titles).where(eq(titles.name, 'Alpha')).get()!;
-    expect(ok.thumbPath).toBe(`memory://doc/thumbs/${hashName('Alpha')}.jpg`);
+    expect(ok.thumbPath).toBe(`memory://doc/thumbs/${hashName('Alpha')}-${hashName('v1')}.jpg`);
     expect(ok.thumbVersion).toBe('v1');
     expect(ok.thumbWantedVersion).toBeNull();
     expect(ok.thumbUrl).toBeNull();

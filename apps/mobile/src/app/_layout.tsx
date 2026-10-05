@@ -125,6 +125,7 @@ function MigrationGate({ onRestart }: { onRestart: () => void }) {
           <Stack.Screen name="settings/queue" options={{ title: "Fila de downloads" }} />
           <Stack.Screen name="settings/bind" options={{ title: "Sincronizar progresso" }} />
           <Stack.Screen name="settings/diagnostics" options={{ title: "Diagnóstico" }} />
+          <Stack.Screen name="settings/metadata" options={{ title: "Metadados do título" }} />
         </Stack>
       </ScreenBoundary>
       <ReconcileOnStart />

@@ -33,7 +33,7 @@ start_server() {
     -v /mnt/d/manga:/mnt/d/manga:ro -v /mnt/d/manga-xl:/mnt/d/manga-xl:ro \
     -v "$SERVER_ID_DIR:/var/lib/manga-test" \
     -e SERVER_ID_PATH=/var/lib/manga-test/.server-id "$IMAGE" >/dev/null
-  for _ in $(seq 1 60); do
+  for _ in $(seq 1 120); do
     curl -fs "http://localhost:$PORT/api/health" >/dev/null && return 0
     sleep 1
   done
@@ -48,7 +48,7 @@ python3 - >/dev/null 2>&1 <<'PY' &
 import http.server, os, subprocess, time, urllib.request
 NAME, PORT = os.environ["NAME"], os.environ["PORT"]
 def healthy():
-    for _ in range(60):
+    for _ in range(120):
         try:
             urllib.request.urlopen(f"http://localhost:{PORT}/api/health", timeout=2); return True
         except Exception: time.sleep(1)

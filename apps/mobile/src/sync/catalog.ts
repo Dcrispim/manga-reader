@@ -247,12 +247,20 @@ async function downloadPendingThumbs(deps: SyncDeps, fresh: Set<string>): Promis
     while (cursor < pending.length) {
       const p = pending[cursor++];
       if (!p.url || !p.version) continue;
-      const dest = await downloadThumb(deps, p.name, p.url);
+      const dest = await downloadThumb(deps, p.name, p.url, p.version);
       if (dest) done.push({ name: p.name, version: p.version, dest });
     }
   };
   await Promise.all(Array.from({ length: THUMB_CONCURRENCY }, worker));
   if (done.length === 0) return;
+  const previous = new Map(
+    db
+      .select({ name: titles.name, p: titles.thumbPath })
+      .from(titles)
+      .where(inArray(titles.name, done.map((d) => d.name)))
+      .all()
+      .map((r) => [r.name, r.p]),
+  );
   db.transaction((tx) => {
     for (const d of done) {
       tx.update(titles)
@@ -261,16 +269,30 @@ async function downloadPendingThumbs(deps: SyncDeps, fresh: Set<string>): Promis
         .run();
     }
   });
+  // The old version's file goes once the row points at the new one.
+  for (const d of done) {
+    const old = previous.get(d.name);
+    if (old && old !== d.dest) await deps.files.remove(old);
+  }
 }
 
-/** Downloads one cover to its final path; returns it, or null on failure. */
-async function downloadThumb(deps: SyncDeps, name: string, rawUrl: string): Promise<string | null> {
+/**
+ * Downloads one cover to its final path; returns it, or null on failure. The
+ * version is part of the file name: image caches key on the URI, so reusing
+ * one path would keep showing the old cover after it changed.
+ */
+async function downloadThumb(
+  deps: SyncDeps,
+  name: string,
+  rawUrl: string,
+  version: string,
+): Promise<string | null> {
   const { db, client, files } = deps;
   const url = /^https?:\/\//.test(rawUrl) ? rawUrl : client.url(rawUrl);
   if (!url) return null;
 
   const dir = `${files.documentDirectory}/thumbs`;
-  const dest = `${dir}/${hashName(name)}.jpg`;
+  const dest = `${dir}/${hashName(name)}-${hashName(version)}.jpg`;
   const tmp = `${dest}.tmp`;
   // Download to a temp name first so a broken transfer never replaces a good cover.
   await files.makeDir(dir);
