@@ -82,13 +82,20 @@ describe('checkServer', () => {
 });
 
 describe('testAddress', () => {
+  it('reports the server id when the server sends one', async () => {
+    const f = jest.fn().mockResolvedValue(
+      new Response(JSON.stringify({ serverId: 'abc', version: '1.3.0', features: [] }), { status: 200 }),
+    );
+    expect(await testAddress('h', 1, f, () => 0)).toMatchObject({ ok: true, serverId: 'abc' });
+  });
+
   it('reports version and elapsed time', async () => {
     const f = jest.fn().mockResolvedValue(
       new Response(JSON.stringify({ version: '1.3.0', features: [] }), { status: 200 }),
     );
     let t = 100;
     const r = await testAddress('h', 3993, f, () => (t += 25));
-    expect(r).toEqual({ ok: true, version: '1.3.0', ms: 25 });
+    expect(r).toEqual({ ok: true, version: '1.3.0', ms: 25, serverId: null });
     expect(f).toHaveBeenCalledWith('http://h:3993/api/health', expect.anything());
   });
 

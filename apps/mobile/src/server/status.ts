@@ -149,7 +149,7 @@ export function acceptPendingServer(db: Db): void {
 }
 
 export type TestResult =
-  | { ok: true; version: string; ms: number }
+  | { ok: true; version: string; ms: number; serverId: string | null }
   | { ok: false };
 
 /**
@@ -172,7 +172,12 @@ export async function testAddress(
     if (!response.ok) return { ok: false };
     const parsed = HealthResponseSchema.safeParse(await response.json());
     if (!parsed.success) return { ok: false };
-    return { ok: true, version: parsed.data.version, ms: now() - started };
+    return {
+      ok: true,
+      version: parsed.data.version,
+      ms: now() - started,
+      serverId: parsed.data.serverId ?? null,
+    };
   } catch {
     return { ok: false };
   } finally {

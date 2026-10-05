@@ -3,7 +3,7 @@ import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { Link, useRouter } from "expo-router";
 import { memo, useEffect, useMemo, useState } from "react";
-import { FlatList, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
+import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useHomeLists } from "../catalog/hooks";
@@ -11,6 +11,7 @@ import { categoriesOf, type CatalogTitle } from "../catalog/queries";
 import { db } from "../db/client";
 import { createClient } from "../net/client";
 import { useServerStatus } from "../server/useServerStatus";
+import { usePullRefresh } from "../sync/usePullRefresh";
 import { Button } from "../ui/Button";
 import { displayName } from "../ui/displayName";
 import { Logo } from "../ui/Logo";
@@ -200,6 +201,8 @@ export default function Home() {
   const heroHeight = Math.max(360, Math.min(height * 0.6, width * 0.95));
 
   const { catalog, continueItems, downloaded } = useHomeLists();
+  const { refreshing, onRefresh } = usePullRefresh();
+  const { status } = useServerStatus();
   const [onlyOffline, setOnlyOffline] = useState(false);
   const byName = useMemo(() => new Map(catalog.map((t) => [t.name, t])), [catalog]);
   const categories = useMemo(() => Object.entries(categoriesOf(catalog)), [catalog]);
@@ -237,7 +240,19 @@ export default function Home() {
 
   return (
     <View style={styles.root}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            progressViewOffset={insets.top + 48}
+            tintColor={colors.foreground}
+            colors={[colors.primaryForeground]}
+            progressBackgroundColor={colors.primary}
+          />
+        }
+      >
         {catalog.length === 0 ? (
           <View style={[styles.empty, { paddingTop: insets.top + 96 }]}>
             <Logo size={64} opacity={0.8} />
@@ -296,6 +311,18 @@ export default function Home() {
         <Logo size={30} />
       </View>
       <TopBar top={insets.top} pad={pad} />
+      {status === "mismatch" ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push("/settings")}
+          style={[styles.mismatch, { top: insets.top + 52, left: pad, right: pad }]}
+        >
+          <Feather name="alert-triangle" size={16} color={colors.warning} />
+          <Text style={styles.mismatchText}>
+            Este endereço é de outro servidor e nada está sincronizando. Toque para escolher.
+          </Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -315,6 +342,18 @@ const styles = StyleSheet.create({
   heroActions: { flexDirection: "row", gap: 16, flexWrap: "wrap" },
   heroOutline: { borderColor: colors.gray500, borderRadius: radius.md },
   topBar: { position: "absolute", flexDirection: "row", alignItems: "center", gap: 8 },
+  mismatch: {
+    position: "absolute",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 12,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: "rgba(240,177,0,0.4)",
+    backgroundColor: "rgba(20,16,0,0.92)",
+  },
+  mismatchText: { flex: 1, fontSize: 13, color: colors.foreground },
   brand: { position: "absolute", height: 32, justifyContent: "center" },
   searchPill: {
     flexDirection: "row",

@@ -1,14 +1,22 @@
 import { Feather } from '@expo/vector-icons';
 import { Link, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { db } from '../../db/client';
 import { DEFAULTS, getSetting, setSetting } from '../../settings/repo';
-import { acceptPendingServer, testAddress } from '../../server/status';
+import { testAddress } from '../../server/status';
 import { refreshServer, useServerStatus } from '../../server/useServerStatus';
 import { ServerStatusPill } from '../../ui/ServerStatusPill';
+import { useCatalog } from '../../catalog/hooks';
+import { settings } from '../../db/schema';
+import { useLiveQuery } from '../../db/liveQuery';
+import { formatRelative } from '../../settings/format';
+import type { SyncResult } from '../../sync/bind';
+import { CURSOR_KEY, type SyncOutcome } from '../../sync/catalog';
 import { runCycle } from '../../sync/cycle';
+import { adoptPendingServer, adoptServer, reloadCatalog } from '../../sync/serverSwitch';
+import { describeBind, describeCatalog, lastRun } from '../../sync/syncStatus';
 import { Button } from '../../ui/Button';
 import { Card, Label } from '../../ui/Card';
 import { common } from '../../ui/SettingsBits';
@@ -40,6 +48,18 @@ export default function SettingsScreen() {
   const [passed, setPassed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
+  // Server id of the last successful test, to spot an address of another server.
+  const testedIdRef = useRef<string | null>(null);
+  // Re-render whenever a setting changes (sync results, cursor, bind...).
+  useLiveQuery(db.select().from(settings));
+  const catalogCount = useCatalog().length;
+  // Clock for the "há X min" texts, refreshed so they do not go stale.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(t);
+  }, []);
   // "Manter" hides the banner until the status changes; the status itself
   // stays mismatch, so sync engines keep not running.
   const [dismissedFor, setDismissedFor] = useState<string | null>(null);
@@ -59,6 +79,7 @@ export default function SettingsScreen() {
     const r = await testAddress(hostValue, portNum);
     setBusy(false);
     setPassed(r.ok);
+    testedIdRef.current = r.ok ? r.serverId : null;
     setMessage(
       r.ok
         ? `Conectado — versão ${r.version}, ${r.ms} ms`
@@ -69,8 +90,8 @@ export default function SettingsScreen() {
 
   function persist() {
     if (portNum === null) return;
-    // server.id is kept on purpose: if the new address is another server,
-    // the next health check reports mismatch and the banner lets the user choose.
+    // server.id is kept on purpose: if the new address turns out to be another
+    // server, the next health check reports mismatch and the banner asks.
     setSetting(db, 'server.host', hostValue);
     setSetting(db, 'server.port', String(portNum));
     void refreshServer();
@@ -85,6 +106,26 @@ export default function SettingsScreen() {
     }
     const ok = passed || (await onTest());
     if (ok) {
+      const newId = testedIdRef.current;
+      if (newId && savedId && newId !== savedId) {
+        Alert.alert(
+          'Trocar de servidor?',
+          'Este endereço é de outro servidor. O catálogo (títulos, metadados e capas) será recarregado dele e o bind atual será desconectado. Downloads e o histórico deste aparelho ficam.',
+          [
+            { text: 'Cancelar', style: 'cancel' },
+            {
+              text: 'Trocar',
+              onPress: () => {
+                void adoptServer(db, newId).then(() => {
+                  persist();
+                  void runCycle({ mode: 'foreground' });
+                });
+              },
+            },
+          ],
+        );
+        return;
+      }
       persist();
       return;
     }
@@ -106,13 +147,17 @@ export default function SettingsScreen() {
         {server.status === 'mismatch' && dismissedFor !== server.pendingServerId ? (
           <View style={styles.banner}>
             <Text>Este endereço aponta para outro servidor</Text>
+            <Text style={common.muted}>
+              Nada sincroniza até você escolher. Usar este servidor recarrega o catálogo dele e desconecta o bind.
+            </Text>
             <View style={common.row}>
               <Button
                 small
                 label="Usar este servidor"
                 onPress={() => {
-                  acceptPendingServer(db);
-                  void refreshServer();
+                  void adoptPendingServer(db, server.pendingServerId)
+                    .then(() => refreshServer())
+                    .then(() => runCycle({ mode: 'foreground' }));
                 }}
               />
               <Button small variant="outline" label="Manter" onPress={() => setDismissedFor(server.pendingServerId)} />
@@ -169,7 +214,30 @@ export default function SettingsScreen() {
 
       <Card style={styles.card}>
         <Label>Sincronização</Label>
-        <Text style={common.muted}>Atualiza o catálogo, o progresso e a fila de downloads.</Text>
+        <View style={styles.status}>
+          <StatusLine
+            label="Servidor"
+            value={
+              getSetting(db, 'server.host')
+                ? `${getSetting(db, 'server.host')}:${getSetting(db, 'server.port')}${
+                    savedId ? ` · ID ${savedId.slice(0, 8)}` : ''
+                  }${getSetting(db, 'server.version') ? ` · v${getSetting(db, 'server.version')}` : ''}`
+                : 'não configurado'
+            }
+          />
+          <StatusLine
+            label="Catálogo"
+            value={`${catalogCount} títulos${
+              Number(getSetting(db, CURSOR_KEY)) > 0
+                ? ` · dados de ${formatRelative(Number(getSetting(db, CURSOR_KEY)), now)}`
+                : ' · ainda não sincronizado'
+            }`}
+          />
+          <RunLine label="Última atualização" now={now} run={lastRun<SyncOutcome>(db, 'catalog')} describe={describeCatalog} />
+          <StatusLine label="Bind" value={getSetting(db, 'bind.code') || 'não conectado'} />
+          <RunLine label="Último envio" now={now} run={lastRun<SyncResult>(db, 'bind')} describe={describeBind} />
+        </View>
+        {syncMessage ? <Text style={common.muted}>{syncMessage}</Text> : null}
         <View style={common.row}>
           <Button
             variant="outline"
@@ -179,8 +247,54 @@ export default function SettingsScreen() {
             testID="settings-sync"
             onPress={() => {
               setSyncing(true);
-              void runCycle({ mode: 'foreground' }).finally(() => setSyncing(false));
+              setSyncMessage(null);
+              void runCycle({ mode: 'foreground' })
+                .then((sum) =>
+                  setSyncMessage(
+                    sum.ran.includes('catalog')
+                      ? 'Sincronização concluída.'
+                      : 'Não sincronizou: verifique o status do servidor acima.',
+                  ),
+                )
+                .finally(() => {
+                  setSyncing(false);
+                  setNow(Date.now());
+                });
             }}
+          />
+          <Button
+            variant="outline"
+            icon="rotate-ccw"
+            label="Recarregar catálogo do zero"
+            disabled={syncing}
+            onPress={() =>
+              Alert.alert(
+                'Recarregar o catálogo?',
+                'Baixa de novo a lista de títulos, metadados e capas deste servidor e limpa o cache de imagens. Downloads e histórico ficam.',
+                [
+                  { text: 'Cancelar', style: 'cancel' },
+                  {
+                    text: 'Recarregar',
+                    onPress: () => {
+                      setSyncing(true);
+                      setSyncMessage(null);
+                      void reloadCatalog(db)
+                        .then((sum) =>
+                          setSyncMessage(
+                            sum.ran.includes('catalog')
+                              ? 'Catálogo recarregado.'
+                              : 'Não foi possível recarregar: verifique o status do servidor.',
+                          ),
+                        )
+                        .finally(() => {
+                          setSyncing(false);
+                          setNow(Date.now());
+                        });
+                    },
+                  },
+                ],
+              )
+            }
           />
         </View>
       </Card>
@@ -204,8 +318,37 @@ export default function SettingsScreen() {
   );
 }
 
+function StatusLine({ label, value, tone }: { label: string; value: string; tone?: 'ok' | 'bad' }) {
+  return (
+    <View style={styles.statusLine}>
+      <Text style={styles.statusLabel}>{label}</Text>
+      <Text style={[styles.statusValue, tone === 'bad' && { color: colors.destructive }]}>{value}</Text>
+    </View>
+  );
+}
+
+function RunLine<T>({
+  label,
+  now,
+  run,
+  describe,
+}: {
+  label: string;
+  now: number;
+  run: { at: number; outcome: T } | null;
+  describe: (o: T) => { ok: boolean; text: string };
+}) {
+  if (!run) return <StatusLine label={label} value="—" />;
+  const d = describe(run.outcome);
+  return <StatusLine label={label} value={`${formatRelative(run.at, now)} · ${d.text}`} tone={d.ok ? 'ok' : 'bad'} />;
+}
+
 const styles = StyleSheet.create({
   card: { padding: 16, gap: 14 },
+  status: { gap: 8 },
+  statusLine: { flexDirection: 'row', gap: 12 },
+  statusLabel: { width: 130, fontSize: 13, color: colors.mutedForeground },
+  statusValue: { flex: 1, fontSize: 13 },
   headRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   banner: {
     padding: 12,

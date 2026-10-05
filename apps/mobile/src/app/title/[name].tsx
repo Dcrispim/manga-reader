@@ -2,7 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import { normalizeCategory } from "@manga/core";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
-import { FlatList, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
+import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, View, useWindowDimensions } from "react-native";
 
 import {
   badgeLabel,
@@ -22,6 +22,7 @@ import { useServerStatus } from "../../server/useServerStatus";
 import { deleteChapter } from "../../storage/downloads";
 import { expoFileStore } from "../../storage/files";
 import { syncTitleOnDemand } from "../../sync/catalog";
+import { usePullRefresh } from "../../sync/usePullRefresh";
 import { Button, IconButton } from "../../ui/Button";
 import { Card, Chip, Label } from "../../ui/Card";
 import { displayName } from "../../ui/displayName";
@@ -71,6 +72,7 @@ export default function TitleScreen() {
   const [ascending, setAscending] = useState(false);
   const [activeVolume, setActiveVolume] = useState<number | null>(null);
   const listRef = useRef<FlatList<ChapterRow>>(null);
+  const { refreshing, onRefresh } = usePullRefresh();
   const chaptersY = useRef(0);
   const tabsRef = useRef<ScrollView>(null);
   const tabX = useRef<number[]>([]);
@@ -278,6 +280,14 @@ export default function TitleScreen() {
       <FlatList
         ref={listRef}
         data={rows}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[colors.primaryForeground]}
+            progressBackgroundColor={colors.primary}
+          />
+        }
         keyExtractor={(r) => r.chapter}
         contentContainerStyle={[styles.content, wide && styles.contentWide]}
         ListHeaderComponent={
