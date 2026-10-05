@@ -15,7 +15,7 @@ export default function LastChapterPage() {
         console.log({chapter,hist:titleHistory});
         
         const lastChapter = chapter[title as string] || '1'; // Default to the first chapter if empty
-        const nextChapter = getNextChapter(lastChapter, titleHistory.history.map((c:string) => parseFloat(c)))
+        const nextChapter = getNextChapter(lastChapter, (titleHistory?.history ?? []).map((c:string) => parseFloat(c)))
         router.push(`/read/${title}/${nextChapter}`);
 
         

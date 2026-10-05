@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import i18n from '@/services/i18n'
 import { cn } from '@/lib/utils'
-import { getHistory, TitleHistory } from '@/utils/history'
+import { getHistory, normalizeEntry, TitleHistory } from '@/utils/history'
 import OfflineBadgeDot from '@/components/offline/OfflineBadgeDot'
 import { useChapterReader } from '@/app/read/[title]/[chapter]/chapter-reader-context'
 
@@ -42,8 +42,9 @@ export default function GridView({ chapters }: { chapters: string[] }) {
             openedAt: {}
         }
         try {
-            const allHistory = getHistory()
-            localHistory = allHistory[title]
+            // A title opened for the first time has no entry yet (history only
+            // records after HISTORY_MIN_OPEN_MS): fall back to an empty one.
+            localHistory = normalizeEntry(getHistory()[title])
 
             
         } catch {
