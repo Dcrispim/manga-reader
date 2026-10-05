@@ -378,7 +378,7 @@ const TitlePage = () => {
             </div>
 
             {volumes.length > 1 && (
-              <div className="flex gap-1 px-5 pt-4 border-b border-border overflow-x-auto">
+              <div className="flex gap-1 px-5 pt-4 border-b border-border overflow-x-auto overflow-y-hidden scrollbar-hide">
                 {volumes.map((v, idx) => {
                   const nums = v.chapters.map((c) => parseFloat(c));
                   const range = `${Math.min(...nums)}–${Math.max(...nums)}`;
