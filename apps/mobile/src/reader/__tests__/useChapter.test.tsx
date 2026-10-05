@@ -51,15 +51,31 @@ describe('useChapter', () => {
     expect((out.current!.state as ChapterState).status).toBe('unavailable');
   });
 
-  it('shows remote pages and caches them into the transient store', async () => {
+  it('downloads remote pages once into the transient store and shows them from there', async () => {
     const db = createTestDb();
     const files = memoryFileStore();
     const { out } = mount({ db, client: fakeClient(['/a/1.jpg', '/a/2.jpg']), files, title: 'T', chapter: '1', next: null, online: true });
     await flush();
     const s = out.current!.state;
     expect(s.status).toBe('ready');
-    if (s.status === 'ready') expect(s.pages.map((p) => p.kind)).toEqual(['remote', 'remote']);
+    if (s.status === 'ready') {
+      expect(s.pages.map((p) => [p.kind, p.pending])).toEqual([
+        ['transient', false],
+        ['transient', false],
+      ]);
+    }
     expect(db.select().from(transientPages).all()).toHaveLength(2);
+    expect(files.downloadLog).toHaveLength(2);
+  });
+
+  it('falls back to the page URL when its download fails', async () => {
+    const db = createTestDb();
+    const files = memoryFileStore({ downloader: () => ({ ok: false, bytes: 0 }) });
+    const { out } = mount({ db, client: fakeClient(['/a/1.jpg']), files, title: 'T', chapter: '1', next: null, online: true });
+    await flush();
+    const s = out.current!.state;
+    if (s.status === 'ready') expect(s.pages.map((p) => [p.kind, p.pending])).toEqual([['remote', false]]);
+    else throw new Error(`unexpected ${s.status}`);
   });
 
   it('uses downloaded pages without caching anything', async () => {

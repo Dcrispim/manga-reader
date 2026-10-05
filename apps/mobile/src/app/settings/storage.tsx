@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
+import { useLiveQuery } from '../../db/liveQuery';
 import { useEffect, useState } from 'react';
 import { Alert, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 

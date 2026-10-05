@@ -76,7 +76,9 @@ function MigrationGate({ onRestart }: { onRestart: () => void }) {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ScreenBoundary>
-        <Stack screenOptions={{ headerRight: () => <HeaderPill /> }}>
+        {/* freezeOnBlur: screens under the top one (home, title) stop re-rendering
+            when the database changes underneath, e.g. history on opening a chapter. */}
+        <Stack screenOptions={{ headerRight: () => <HeaderPill />, freezeOnBlur: true }}>
           <Stack.Screen name="index" options={{ title: "Manga Reader" }} />
           <Stack.Screen name="search" options={{ title: "Buscar" }} />
           <Stack.Screen name="category/[id]" options={{ title: "Categoria" }} />
