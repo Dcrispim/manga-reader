@@ -18,6 +18,7 @@ import { Text } from '../ui/Text';
 import { colors, radius } from '../ui/theme';
 
 const LAST_READ_COUNT = 4;
+const CLOSE_MS = 220;
 const CELL_W = 56;
 const CELL_H = 44;
 const GAP = 10;
@@ -74,7 +75,7 @@ export function ReaderMenu({
 
   // Once built it stays mounted: closed, it sits off screen and ignores touches.
   useEffect(() => {
-    Animated.timing(slide, { toValue: open ? 1 : 0, duration: 220, useNativeDriver: true }).start();
+    Animated.timing(slide, { toValue: open ? 1 : 0, duration: CLOSE_MS, useNativeDriver: true }).start();
   }, [open, slide]);
 
   const blocks = useMemo(
@@ -107,9 +108,11 @@ export function ReaderMenu({
   const currentIndex = gridItems.findIndex((g) => g.chapter === chapter);
   const initialRow = currentIndex >= 0 ? Math.max(0, Math.floor(currentIndex / cols) - 2) : 0;
 
+  // Close first and navigate once the slide-out ended: unmounting the screen
+  // mid-animation (native driver) crashes Fabric ("child already has a parent").
   const go = (action: () => void) => {
     onClose();
-    action();
+    setTimeout(action, CLOSE_MS + 40);
   };
 
   return (
