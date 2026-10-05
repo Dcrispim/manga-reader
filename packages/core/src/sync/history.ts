@@ -6,6 +6,11 @@
 // genuinely first opened, so a stale tab reloading an old chapter (e.g. a
 // backgrounded mobile tab being restored) can't masquerade as fresher
 // progress than a chapter actually read later on another device.
+// A chapter only counts as read (history, "continue from", bind) after it
+// stayed open this long. Shared by the web reader and the app, so a quick
+// peek or a mis-tap does not move anyone's progress.
+export const HISTORY_MIN_OPEN_MS = 15_000
+
 export type TitleHistory = { lastRead: number | null, history: string[], openedAt: Record<string, number> }
 
 export function normalizeEntry(entry?: Partial<TitleHistory>): TitleHistory {

@@ -1,20 +1,34 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useLiveQuery } from "../../../db/liveQuery";
+import { Feather } from "@expo/vector-icons";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, View } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  Animated,
+  FlatList,
+  Pressable,
+  StyleSheet,
+  View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { chapterRows, q } from "../../../catalog/queries";
 import { db } from "../../../db/client";
 import { enqueueAndDrain } from "../../../jobs/drain";
 import { createClient } from "../../../net/client";
 import { PageImage } from "../../../reader/PageImage";
+import { ReaderMenu } from "../../../reader/ReaderMenu";
 import { UnavailableChapter } from "../../../reader/UnavailableChapter";
 import { ZoomableList } from "../../../reader/ZoomableList";
 import { nextChapter } from "../../../reader/nextChapter";
 import { useChapter } from "../../../reader/useChapter";
 import { useServerStatus } from "../../../server/useServerStatus";
 import { expoFileStore } from "../../../storage/files";
-import { Button } from "../../../ui/Button";
+import { Button, IconButton } from "../../../ui/Button";
+import { ServerStatusPill } from "../../../ui/ServerStatusPill";
 import { displayName } from "../../../ui/displayName";
 import { Text } from "../../../ui/Text";
 import { colors, radius } from "../../../ui/theme";
@@ -30,6 +44,7 @@ export default function ReaderScreen() {
   const { data: sources } = useLiveQuery(q.sources(db, title), [title]);
   const { data: dls } = useLiveQuery(q.titleDownloads(db, title), [title]);
   const { data: jobRows } = useLiveQuery(q.titleJobs(db, title), [title]);
+  const { data: hist } = useLiveQuery(q.titleHistory(db, title), [title]);
 
   const chapters = useMemo(
     () =>
@@ -40,6 +55,18 @@ export default function ReaderScreen() {
     [sources, dls],
   );
   const { next, skipped } = useMemo(() => nextChapter(chapters, chapter), [chapters, chapter]);
+  const prev = useMemo(() => {
+    const cur = parseFloat(chapter);
+    const before = chapters.filter((c) => parseFloat(c) < cur);
+    return before.length ? before[before.length - 1] : null;
+  }, [chapters, chapter]);
+  const readOpenedAt = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const h of hist ?? []) m.set(h.chapter, Math.max(m.get(h.chapter) ?? 0, h.openedAt));
+    return m;
+  }, [hist]);
+  const insets = useSafeAreaInsets();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const { state, quality, setQuality, xlAvailable } = useChapter({
     db,
@@ -74,28 +101,92 @@ export default function ReaderScreen() {
     ]);
   };
 
+  // Header and footer slide away while scrolling down and come back on any
+  // scroll up (or near the top), like a reading app should.
+  const [chrome] = useState(() => new Animated.Value(1));
+  const [chromeVisible, setChromeVisible] = useState(true);
+  const lastY = useRef(0);
+  useEffect(() => {
+    Animated.timing(chrome, { toValue: chromeVisible ? 1 : 0, duration: 180, useNativeDriver: true }).start();
+  }, [chromeVisible, chrome]);
+  const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const y = e.nativeEvent.contentOffset.y;
+    const dy = y - lastY.current;
+    lastY.current = y;
+    if (y < 48) setChromeVisible(true);
+    else if (dy > 6) setChromeVisible(false);
+    else if (dy < -6) setChromeVisible(true);
+  };
+  const headerHeight = insets.top + 56;
+  const showBar = xlAvailable && online;
+
   const header = (
-    <Stack.Screen
-      options={{ title: `${displayName(title)} · Cap. ${chapter}`, headerStyle: { backgroundColor: colors.black } }}
-    />
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <Animated.View
+        style={[
+          styles.header,
+          {
+            paddingTop: insets.top,
+            height: headerHeight,
+            transform: [{ translateY: chrome.interpolate({ inputRange: [0, 1], outputRange: [-headerHeight, 0] }) }],
+          },
+        ]}
+      >
+        <IconButton icon="arrow-left" label="Voltar" color={colors.foreground} size={22} onPress={() => router.back()} />
+        <Text style={styles.headerTitle} numberOfLines={1}>{`${displayName(title)} · Cap. ${chapter}`}</Text>
+        <ServerStatusPill status={status} />
+      </Animated.View>
+    </>
+  );
+
+  const menu = (
+    <>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Abrir menu"
+        onPress={() => setMenuOpen(true)}
+        style={[styles.fab, { bottom: insets.bottom + 16 }]}
+      >
+        <Feather name="menu" size={20} color={colors.foreground} />
+      </Pressable>
+      <ReaderMenu
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        title={title}
+        chapter={chapter}
+        chapters={chapters}
+        next={next}
+        prev={prev}
+        readOpenedAt={readOpenedAt}
+        quality={quality}
+        xlAvailable={showBar}
+        onQuality={setQuality}
+        onChapter={goTo}
+        onTitle={() => router.dismissTo({ pathname: "/title/[name]", params: { name: title } })}
+        onHome={() => router.dismissTo("/")}
+      />
+    </>
   );
 
   if (state.status === "unavailable") {
     return (
       <View style={styles.root}>
         {header}
-        <UnavailableChapter
-          job={job}
-          onDownload={() => enqueueAndDrain(db, "download", title, chapter)}
-          onBack={() => router.back()}
-        />
+        <View style={{ flex: 1, paddingTop: headerHeight }}>
+          <UnavailableChapter
+            job={job}
+            onDownload={() => enqueueAndDrain(db, "download", title, chapter)}
+            onBack={() => router.back()}
+          />
+        </View>
+        {menu}
       </View>
     );
   }
 
   return (
     <View style={styles.root}>
-      {header}
       {state.status === "loading" ? (
         <View style={styles.center}>
           <ActivityIndicator color={colors.mutedForeground} />
@@ -109,6 +200,9 @@ export default function ReaderScreen() {
             initialNumToRender={2}
             maxToRenderPerBatch={2}
             removeClippedSubviews
+            onScroll={onScroll}
+            scrollEventThrottle={32}
+            contentContainerStyle={{ paddingTop: headerHeight }}
             renderItem={({ item }) => (
               <PageImage
                 testID={`page-${item.index}`}
@@ -120,19 +214,32 @@ export default function ReaderScreen() {
               />
             )}
             ListFooterComponent={
-              next ? (
-                <View style={styles.next}>
-                  <Button label={`Próximo capítulo (${next})`} icon="arrow-right" onPress={goNext} />
-                </View>
-              ) : (
-                <Text style={styles.end}>Fim</Text>
-              )
+              <View style={{ paddingBottom: insets.bottom + 72 }}>
+                {next ? (
+                  <View style={styles.next}>
+                    <Button label={`Próximo capítulo (${next})`} icon="arrow-right" onPress={goNext} />
+                  </View>
+                ) : (
+                  <Text style={styles.end}>Fim</Text>
+                )}
+              </View>
             }
           />
         </ZoomableList>
       )}
-      {xlAvailable && online ? (
-        <View style={styles.bar}>
+      {header}
+      {showBar ? (
+        <Animated.View
+          style={[
+            styles.bar,
+            {
+              bottom: insets.bottom + 16,
+              opacity: chrome,
+              transform: [{ translateY: chrome.interpolate({ inputRange: [0, 1], outputRange: [80, 0] }) }],
+            },
+          ]}
+          pointerEvents={chromeVisible ? "auto" : "none"}
+        >
           <Pressable
             accessibilityRole="button"
             onPress={() => setQuality("original")}
@@ -147,8 +254,9 @@ export default function ReaderScreen() {
           >
             <Text style={quality === "xl" ? styles.on : styles.off}>Upscaled</Text>
           </Pressable>
-        </View>
+        </Animated.View>
       ) : null}
+      {menu}
     </View>
   );
 }
@@ -156,14 +264,26 @@ export default function ReaderScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.black },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
+  header: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingHorizontal: 12,
+    backgroundColor: "rgba(0,0,0,0.85)",
+  },
+  headerTitle: { flex: 1, fontSize: 17, fontWeight: "600" },
   next: { paddingVertical: 32, alignItems: "center" },
   end: { color: colors.mutedForeground, textAlign: "center", padding: 32 },
   bar: {
+    position: "absolute",
     flexDirection: "row",
     alignSelf: "center",
     gap: 4,
     padding: 4,
-    margin: 10,
     borderRadius: radius.full,
     borderWidth: 1,
     borderColor: colors.border,
@@ -173,4 +293,16 @@ const styles = StyleSheet.create({
   segOn: { backgroundColor: colors.primary },
   on: { color: colors.primaryForeground, fontWeight: "600", fontSize: 13 },
   off: { color: colors.mutedForeground, fontSize: 13 },
+  fab: {
+    position: "absolute",
+    right: 16,
+    width: 48,
+    height: 48,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 });

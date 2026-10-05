@@ -1,3 +1,4 @@
+import { HISTORY_MIN_OPEN_MS } from '@manga/core';
 import { act, create } from 'react-test-renderer';
 
 import { createTestDb } from '../../db/testDb';
@@ -91,16 +92,31 @@ describe('useChapter', () => {
     expect(db.select().from(transientPages).all()).toHaveLength(0);
   });
 
-  it('records history, guards the open chapter and queues the next on autoNext', async () => {
+  it('records history only after the delay, guards the open chapter and queues the next on autoNext', async () => {
     const db = createTestDb();
     setSetting(db, 'downloads.autoNext', 'true');
-    const { tree } = mount({ db, client: fakeClient(['/a/1.jpg']), files: memoryFileStore(), title: 'T', chapter: '1', next: '2', online: true });
+    const { tree } = mount({ db, client: fakeClient(['/a/1.jpg']), files: memoryFileStore(), title: 'T', chapter: '1', next: '2', online: true, historyDelayMs: 60 });
     await flush();
+    expect(db.select().from(history).all()).toHaveLength(0);
+    await act(async () => { await new Promise((r) => setTimeout(r, 80)); });
     expect(db.select().from(history).all().map((h) => h.chapter)).toEqual(['1']);
     expect(getOpenChapterId()).toContain('T');
     expect(db.select().from(jobs).all().map((j) => j.chapter)).toEqual(['2']);
     act(() => tree.unmount());
     expect(getOpenChapterId()).toBeNull();
+  });
+
+  it('does not record history when the chapter closes before the delay', async () => {
+    const db = createTestDb();
+    const { tree } = mount({ db, client: fakeClient(['/a/1.jpg']), files: memoryFileStore(), title: 'T', chapter: '1', next: null, online: true, historyDelayMs: 60 });
+    await flush();
+    act(() => tree.unmount());
+    await act(async () => { await new Promise((r) => setTimeout(r, 80)); });
+    expect(db.select().from(history).all()).toHaveLength(0);
+  });
+
+  it('uses the shared 15 s minimum by default', () => {
+    expect(HISTORY_MIN_OPEN_MS).toBe(15_000);
   });
 
   it('does not record history nor queue autoNext for an unavailable chapter', async () => {

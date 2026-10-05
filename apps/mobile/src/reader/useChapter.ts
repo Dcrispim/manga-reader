@@ -1,4 +1,5 @@
 import { ReadChapterResponseSchema, paths } from '@manga/api-contract';
+import { HISTORY_MIN_OPEN_MS } from '@manga/core';
 import { useEffect, useRef, useState } from 'react';
 
 import type { Db } from '../db/types';
@@ -29,6 +30,8 @@ export interface UseChapterInput {
   /** Next chapter in the title's list, or null; queued when downloads.autoNext is on. */
   next: string | null;
   online: boolean;
+  /** How long the chapter must stay open before it enters history (tests shorten it). */
+  historyDelayMs?: number;
 }
 
 /** Remote pages are cached two at a time, like the download queue. */
@@ -47,6 +50,7 @@ export function imagePathOf(uri: string): string {
  */
 export function useChapter(input: UseChapterInput) {
   const { db, client, files, title, chapter, next, online } = input;
+  const historyDelayMs = input.historyDelayMs ?? HISTORY_MIN_OPEN_MS;
   const [wanted, setWanted] = useState<Quality>('original');
   const [state, setState] = useState<ChapterState>({ status: 'loading' });
   const [xlAvailable, setXlAvailable] = useState(false);
@@ -65,14 +69,23 @@ export function useChapter(input: UseChapterInput) {
 
   // History ("read") and auto-next only once the chapter really has pages: an
   // unavailable chapter must not count as read nor be propagated by bind.
+  // History also waits until the chapter stayed open HISTORY_MIN_OPEN_MS, so
+  // leaving earlier (or a mis-tap) records nothing.
   const ready = state.status === 'ready';
   useEffect(() => {
     if (!ready) return;
-    try {
-      recordOpen(db, title, chapter, Date.now());
-    } catch {
-      // History is best-effort.
-    }
+    const timer = setTimeout(() => {
+      try {
+        recordOpen(db, title, chapter, Date.now());
+      } catch {
+        // History is best-effort.
+      }
+    }, historyDelayMs);
+    return () => clearTimeout(timer);
+  }, [db, title, chapter, ready, historyDelayMs]);
+
+  useEffect(() => {
+    if (!ready) return;
     if (next && isAutoNext(db)) {
       enqueue(db, 'download', title, next);
       requestDrain();

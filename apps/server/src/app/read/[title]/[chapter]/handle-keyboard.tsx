@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, type Dispatch, type SetStateAction } from 'react'
+import { HISTORY_MIN_OPEN_MS } from '@manga/core'
 import { getChapters, getHistory, getLatestChapter, saveToHistory, setChapters } from '@/utils/history'
 import { BIND_CODE_KEY, buildDeltaPayload, getLastSync, setLastSync } from '@/utils/bind'
 import { fetchData } from '@/services/fetch'
@@ -22,32 +23,39 @@ export default function HandleKeyboardNavigation({
     const { goToChapter } = useChapterReader()
 
     useEffect(() => {
-        // Save the title to history (additive: only genuinely new chapters
-        // get a fresh timestamp, so a stale reload of an old chapter can't
-        // look "more recent" than real progress made elsewhere).
-        saveToHistory(title, currentChapter)
+        // Only a chapter that stayed open HISTORY_MIN_OPEN_MS counts as read:
+        // leaving earlier (a peek, a mis-click) records and pushes nothing.
+        const timer = setTimeout(() => {
+            // Save the title to history (additive: only genuinely new chapters
+            // get a fresh timestamp, so a stale reload of an old chapter can't
+            // look "more recent" than real progress made elsewhere).
+            saveToHistory(title, currentChapter)
 
-        // Derive the "continue from" chapter from the recorded open times
-        // instead of blindly trusting whatever chapter this mount happened
-        // to load, which protects against the same stale-reload scenario.
-        const savedChapters = getChapters()
-        savedChapters[title] = getLatestChapter(getHistory()[title]) ?? currentChapter
-        setChapters(savedChapters)
+            // Derive the "continue from" chapter from the recorded open times
+            // instead of blindly trusting whatever chapter this mount happened
+            // to load, which protects against the same stale-reload scenario.
+            const savedChapters = getChapters()
+            savedChapters[title] = getLatestChapter(getHistory()[title]) ?? currentChapter
+            setChapters(savedChapters)
 
-        // Push only what changed since the last sync to the connected bind, if any
-        const bindCode = localStorage.getItem(BIND_CODE_KEY)
-        if (bindCode) {
-            const since = getLastSync()
-            const now = Date.now()
-            fetchData(`/api/bind/${bindCode}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(buildDeltaPayload({ history: getHistory(), chapters: savedChapters }, since)),
-            }).then((result) => {
-                if (result && !result.error && !result.message) setLastSync(now)
-            })
-        }
+            // Push only what changed since the last sync to the connected bind, if any
+            const bindCode = localStorage.getItem(BIND_CODE_KEY)
+            if (bindCode) {
+                const since = getLastSync()
+                const now = Date.now()
+                fetchData(`/api/bind/${bindCode}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(buildDeltaPayload({ history: getHistory(), chapters: savedChapters }, since)),
+                }).then((result) => {
+                    if (result && !result.error && !result.message) setLastSync(now)
+                })
+            }
+        }, HISTORY_MIN_OPEN_MS)
+        return () => clearTimeout(timer)
+    }, [title, currentChapter])
 
+    useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
             const el = event.target as HTMLElement | null
             const inEditable = Boolean(
