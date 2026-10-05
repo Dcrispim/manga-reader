@@ -1,4 +1,4 @@
-import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
+import { useLiveQuery } from '../db/liveQuery';
 import { useMemo } from 'react';
 
 import { db } from '../db/client';

@@ -12,9 +12,12 @@ import { resolveChapterPages, type PageSource, type ResolverClient } from './res
 
 export type Quality = 'original' | 'xl';
 
+/** A remote page is `pending` while its single download into the cache runs. */
+export type ChapterPage = PageSource & { pending?: boolean };
+
 export type ChapterState =
   | { status: 'loading' }
-  | { status: 'ready'; pages: PageSource[] }
+  | { status: 'ready'; pages: ChapterPage[] }
   | { status: 'unavailable' };
 
 export interface UseChapterInput {
@@ -86,15 +89,29 @@ export function useChapter(input: UseChapterInput) {
         setState({ status: 'unavailable' });
         return;
       }
-      setState({ status: 'ready', pages: r.pages });
-      // The cache holds originals only, so xl pages are never stored.
-      if (quality !== 'original') return;
+      // The cache holds originals only, so xl pages are shown straight from the server.
+      if (quality !== 'original') {
+        setState({ status: 'ready', pages: r.pages });
+        return;
+      }
+      // Each remote page is downloaded once, into the cache, and shown from
+      // there (showing the URL too would fetch every page twice).
+      setState({
+        status: 'ready',
+        pages: r.pages.map((p) => (p.kind === 'remote' ? { ...p, pending: true } : p)),
+      });
+      const settle = (index: number, page: Partial<ChapterPage>) =>
+        setState((s) =>
+          s.status !== 'ready'
+            ? s
+            : { ...s, pages: s.pages.map((p) => (p.index === index ? { ...p, ...page } : p)) },
+        );
       const remote = r.pages.filter((p) => p.kind === 'remote');
       let cursor = 0;
       const worker = async () => {
         while (!cancelled && cursor < remote.length) {
           const p = remote[cursor++];
-          await fetchToTransient({
+          const dest = await fetchToTransient({
             db,
             files,
             client,
@@ -103,6 +120,9 @@ export function useChapter(input: UseChapterInput) {
             page: p.index,
             imagePath: imagePathOf(p.uri),
           });
+          if (cancelled) return;
+          // A failed download falls back to loading the URL directly.
+          settle(p.index, dest ? { kind: 'transient', uri: dest, pending: false } : { pending: false });
         }
       };
       await Promise.all(Array.from({ length: CACHE_CONCURRENCY }, worker));

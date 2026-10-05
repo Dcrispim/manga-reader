@@ -36,4 +36,33 @@ describe('ErrorBoundary', () => {
     });
     expect(tree.root.findByType(Text).props.children).toBe('ok');
   });
+
+  it('clears the error when resetKey changes, keeping the same instance', () => {
+    const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    let fail = true;
+    function Maybe() {
+      if (fail) throw new Error('kaboom');
+      return <Text>ok</Text>;
+    }
+    let tree!: ReturnType<typeof create>;
+    act(() => {
+      tree = create(
+        <ErrorBoundary onBack={() => {}} resetKey="/a">
+          <Maybe />
+        </ErrorBoundary>,
+      );
+    });
+    const boundary = tree.root.findByType(ErrorBoundary).instance;
+    fail = false;
+    act(() => {
+      tree.update(
+        <ErrorBoundary onBack={() => {}} resetKey="/b">
+          <Maybe />
+        </ErrorBoundary>,
+      );
+    });
+    expect(tree.root.findByType(Text).props.children).toBe('ok');
+    expect(tree.root.findByType(ErrorBoundary).instance).toBe(boundary);
+    spy.mockRestore();
+  });
 });

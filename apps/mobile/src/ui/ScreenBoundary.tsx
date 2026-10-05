@@ -10,8 +10,10 @@ export function ScreenBoundary({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   return (
+    // resetKey, not key: a key would remount the whole Stack (every screen in
+    // it) on each navigation.
     <ErrorBoundary
-      key={pathname}
+      resetKey={pathname}
       onError={(e) => log(db, 'error', 'ui.screen', `${pathname}: ${e.message}`)}
       onBack={() => (router.canGoBack() ? router.back() : router.replace('/'))}
     >

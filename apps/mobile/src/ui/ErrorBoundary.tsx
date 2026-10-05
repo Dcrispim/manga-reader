@@ -4,6 +4,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 interface Props {
   children: ReactNode;
+  /** A change (e.g. the route) clears a shown error, without remounting the children. */
+  resetKey?: string;
   onBack: () => void;
   /** Where the error is recorded; injectable for tests. */
   onError?: (error: Error) => void;
@@ -19,6 +21,10 @@ export class ErrorBoundary extends Component<Props, { error: Error | null }> {
 
   componentDidCatch(error: Error) {
     this.props.onError?.(error);
+  }
+
+  componentDidUpdate(prev: Props) {
+    if (this.state.error && prev.resetKey !== this.props.resetKey) this.setState({ error: null });
   }
 
   render() {

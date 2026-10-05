@@ -25,8 +25,12 @@ export { SERVER_SOURCE };
 export const CURSOR_KEY = 'catalog.since';
 // The first sync can carry ~80k chapters in one JSON body.
 const CATALOG_TIMEOUT_MS = 60_000;
-// Titles written between two yields to the event loop (keeps the UI alive).
-const YIELD_EVERY = 5;
+// Chapter rows per transaction (a yield to the event loop follows each one).
+const ROWS_PER_TX = 5000;
+// Rows per multi-row INSERT (6 columns each, well under SQLite's variable limit).
+const ROWS_PER_INSERT = 500;
+// Covers downloaded at the same time.
+const THUMB_CONCURRENCY = 6;
 
 /** Slice of the net client the engine needs (easy to fake). */
 export interface SyncClient {
@@ -96,12 +100,24 @@ async function runSync(deps: SyncDeps): Promise<SyncOutcome> {
 
   let changed = 0;
   try {
-    let batch = 0;
-    for (const title of catalog.titles) {
-      writeTitle(db, title, now());
-      changed++;
-      await syncThumb(deps, title);
-      if (++batch % YIELD_EVERY === 0) await yieldToEventLoop();
+    // Few big transactions instead of one per title: every commit re-runs the
+    // screens' live queries, and row-by-row inserts were the bulk of the cost.
+    const titlesList = catalog.titles;
+    let i = 0;
+    while (i < titlesList.length) {
+      const chunk: CatalogTitle[] = [];
+      let rows = 0;
+      while (i < titlesList.length && (chunk.length === 0 || rows < ROWS_PER_TX)) {
+        chunk.push(titlesList[i]);
+        rows += titlesList[i].chapters.length;
+        i++;
+      }
+      const at = now();
+      db.transaction((tx) => {
+        for (const t of chunk) writeTitle(tx as unknown as Db, t, at);
+      });
+      changed += chunk.length;
+      await yieldToEventLoop();
     }
 
     // Removals and the cursor commit together: the cursor never gets ahead of
@@ -112,7 +128,9 @@ async function runSync(deps: SyncDeps): Promise<SyncOutcome> {
       setCursor(tx as unknown as Db, catalog.serverTime);
     });
     for (const p of removedThumbs) await files.remove(p);
-    await retryThumbs(deps);
+    // Covers come after the data, so the catalog shows up without waiting on them.
+    const fresh = await markThumbs(deps, titlesList);
+    await downloadPendingThumbs(deps, fresh);
   } catch (err) {
     log(db, 'error', 'sync.catalog', `write failed: ${String(err)}`);
     return { skipped: 'write-failed' };
@@ -127,84 +145,129 @@ function setCursor(db: Db, value: number): void {
     .run();
 }
 
-/** One title = one transaction; thumb columns are owned by syncThumb. */
-function writeTitle(db: Db, t: CatalogTitle, at: number): void {
+/** Writes one title inside the caller's transaction; thumb columns are owned by the cover pass. */
+function writeTitle(tx: Db, t: CatalogTitle, at: number): void {
+  const metadataJson = JSON.stringify(t.metadata);
+  const categoriesJson = JSON.stringify(t.categories);
+  tx.insert(titles)
+    .values({
+      name: t.name,
+      metadataJson,
+      categoriesJson,
+      serverMtime: t.mtimeMs,
+      updatedAt: at,
+    })
+    .onConflictDoUpdate({
+      target: titles.name,
+      set: { metadataJson, categoriesJson, serverMtime: t.mtimeMs, updatedAt: at },
+    })
+    .run();
+  tx.delete(chapterSources)
+    .where(
+      and(
+        eq(chapterSources.title, t.name),
+        eq(chapterSources.sourceId, SERVER_SOURCE),
+      ),
+    )
+    .run();
+  const values = t.chapters.map((c) => ({
+    title: t.name,
+    chapter: String(c.number),
+    sourceId: SERVER_SOURCE,
+    location: c.id,
+    pages: c.pages,
+    mtimeMs: c.mtimeMs,
+  }));
+  for (let i = 0; i < values.length; i += ROWS_PER_INSERT) {
+    tx.insert(chapterSources).values(values.slice(i, i + ROWS_PER_INSERT)).run();
+  }
+}
+
+/**
+ * Flags the covers that need a download (new version, or the file is gone).
+ * Covers already up to date get their pending flag cleared.
+ */
+async function markThumbs(deps: SyncDeps, list: CatalogTitle[]): Promise<Set<string>> {
+  const { db, files } = deps;
+  const current = new Map(
+    db
+      .select({ name: titles.name, v: titles.thumbVersion, p: titles.thumbPath })
+      .from(titles)
+      .all()
+      .map((r) => [r.name, r]),
+  );
+  const upToDate: string[] = [];
+  const wanted: { name: string; url: string; version: string }[] = [];
+  for (const t of list) {
+    if (!t.thumb) continue;
+    const row = current.get(t.name);
+    if (row?.v === t.thumb.version && row.p && (await files.exists(row.p))) upToDate.push(t.name);
+    else wanted.push({ name: t.name, url: t.thumb.url, version: t.thumb.version });
+  }
+  // Remember what we want before trying: a failed download is retried on the
+  // next cycle, since the incremental catalog will not send this title again.
   db.transaction((tx) => {
-    const metadataJson = JSON.stringify(t.metadata);
-    const categoriesJson = JSON.stringify(t.categories);
-    tx.insert(titles)
-      .values({
-        name: t.name,
-        metadataJson,
-        categoriesJson,
-        serverMtime: t.mtimeMs,
-        updatedAt: at,
-      })
-      .onConflictDoUpdate({
-        target: titles.name,
-        set: { metadataJson, categoriesJson, serverMtime: t.mtimeMs, updatedAt: at },
-      })
-      .run();
-    tx.delete(chapterSources)
-      .where(
-        and(
-          eq(chapterSources.title, t.name),
-          eq(chapterSources.sourceId, SERVER_SOURCE),
-        ),
-      )
-      .run();
-    for (const c of t.chapters) {
-      tx.insert(chapterSources)
-        .values({
-          title: t.name,
-          chapter: String(c.number),
-          sourceId: SERVER_SOURCE,
-          location: c.id,
-          pages: c.pages,
-          mtimeMs: c.mtimeMs,
-        })
+    if (upToDate.length > 0) {
+      tx.update(titles)
+        .set({ thumbUrl: null, thumbWantedVersion: null })
+        .where(inArray(titles.name, upToDate))
+        .run();
+    }
+    for (const w of wanted) {
+      tx.update(titles)
+        .set({ thumbUrl: w.url, thumbWantedVersion: w.version })
+        .where(eq(titles.name, w.name))
+        .run();
+    }
+  });
+  return new Set(wanted.map((w) => w.name));
+}
+
+// Covers whose earlier download failed, retried per cycle.
+const THUMB_RETRY_LIMIT = 20;
+
+/**
+ * Downloads the covers flagged by this response plus a bounded number of
+ * earlier failures, a few at a time, and records them in one transaction.
+ */
+async function downloadPendingThumbs(deps: SyncDeps, fresh: Set<string>): Promise<void> {
+  const { db } = deps;
+  const flagged = db
+    .select({ name: titles.name, url: titles.thumbUrl, version: titles.thumbWantedVersion })
+    .from(titles)
+    .where(isNotNull(titles.thumbWantedVersion))
+    .all();
+  const pending = [
+    ...flagged.filter((p) => fresh.has(p.name)),
+    ...flagged.filter((p) => !fresh.has(p.name)).slice(0, THUMB_RETRY_LIMIT),
+  ];
+  const done: { name: string; version: string; dest: string }[] = [];
+  let cursor = 0;
+  const worker = async () => {
+    while (cursor < pending.length) {
+      const p = pending[cursor++];
+      if (!p.url || !p.version) continue;
+      const dest = await downloadThumb(deps, p.name, p.url);
+      if (dest) done.push({ name: p.name, version: p.version, dest });
+    }
+  };
+  await Promise.all(Array.from({ length: THUMB_CONCURRENCY }, worker));
+  if (done.length === 0) return;
+  db.transaction((tx) => {
+    for (const d of done) {
+      tx.update(titles)
+        .set({ thumbVersion: d.version, thumbPath: d.dest, thumbUrl: null, thumbWantedVersion: null })
+        .where(eq(titles.name, d.name))
         .run();
     }
   });
 }
 
-// Covers retried per cycle (titles whose last download failed).
-const THUMB_RETRY_LIMIT = 20;
-
-/** Downloads the cover only when its version changed; a failure keeps the old one. */
-async function syncThumb(deps: SyncDeps, t: CatalogTitle): Promise<void> {
-  const { db, files } = deps;
-  if (!t.thumb) return;
-  const row = db
-    .select({ v: titles.thumbVersion, p: titles.thumbPath })
-    .from(titles)
-    .where(eq(titles.name, t.name))
-    .get();
-  if (row?.v === t.thumb.version && row.p && (await files.exists(row.p))) {
-    db.update(titles)
-      .set({ thumbUrl: null, thumbWantedVersion: null })
-      .where(eq(titles.name, t.name))
-      .run();
-    return;
-  }
-  // Remember what we want before trying: a failed download is retried by
-  // retryThumbs, since the incremental catalog will not send this title again.
-  db.update(titles)
-    .set({ thumbUrl: t.thumb.url, thumbWantedVersion: t.thumb.version })
-    .where(eq(titles.name, t.name))
-    .run();
-  await downloadThumb(deps, t.name, t.thumb.url, t.thumb.version);
-}
-
-async function downloadThumb(
-  deps: SyncDeps,
-  name: string,
-  rawUrl: string,
-  version: string,
-): Promise<void> {
+/** Downloads one cover to its final path; returns it, or null on failure. */
+async function downloadThumb(deps: SyncDeps, name: string, rawUrl: string): Promise<string | null> {
   const { db, client, files } = deps;
   const url = /^https?:\/\//.test(rawUrl) ? rawUrl : client.url(rawUrl);
-  if (!url) return;
+  if (!url) return null;
 
   const dir = `${files.documentDirectory}/thumbs`;
   const dest = `${dir}/${hashName(name)}.jpg`;
@@ -215,34 +278,9 @@ async function downloadThumb(
   if (!dl.ok || !(await files.move(tmp, dest))) {
     await files.remove(tmp);
     log(db, 'warn', 'sync.catalog', `cover download failed: ${name}`);
-    return;
+    return null;
   }
-  db.update(titles)
-    .set({
-      thumbVersion: version,
-      thumbPath: dest,
-      thumbUrl: null,
-      thumbWantedVersion: null,
-    })
-    .where(eq(titles.name, name))
-    .run();
-}
-
-/** Cheap pass over covers whose download failed earlier (bounded per cycle). */
-async function retryThumbs(deps: SyncDeps): Promise<void> {
-  const pending = deps.db
-    .select({
-      name: titles.name,
-      url: titles.thumbUrl,
-      version: titles.thumbWantedVersion,
-    })
-    .from(titles)
-    .where(isNotNull(titles.thumbWantedVersion))
-    .limit(THUMB_RETRY_LIMIT)
-    .all();
-  for (const p of pending) {
-    if (p.url && p.version) await downloadThumb(deps, p.name, p.url, p.version);
-  }
+  return dest;
 }
 
 /**

@@ -1,5 +1,5 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { useLiveQuery } from "drizzle-orm/expo-sqlite";
+import { useLiveQuery } from "../../../db/liveQuery";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -105,6 +105,7 @@ export default function ReaderScreen() {
               <PageImage
                 testID={`page-${item.index}`}
                 uri={item.uri}
+                pending={item.pending}
                 fallbackAspect={aspect}
                 retryToken={retryToken}
                 onAspect={setAspect}

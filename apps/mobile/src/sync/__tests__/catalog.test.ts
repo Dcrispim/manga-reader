@@ -261,15 +261,16 @@ describe('syncCatalog', () => {
     expect(cursor(s.db)).toBeUndefined();
   });
 
-  it('keeps earlier titles but not the cursor when a title fails mid-batch', async () => {
-    const dup = title('Beta', [1, 1]); // duplicate PK -> that title's transaction fails
+  it('rolls back the failed batch and keeps the cursor when a title fails', async () => {
+    const dup = title('Beta', [1, 1]); // duplicate PK -> the batch transaction fails
     const s = setup(
       catalogBody({ titles: [title('Alpha', [1]), dup, title('Gamma', [1])], allTitleNames: ['Alpha', 'Beta', 'Gamma'] }),
     );
     await goOnline(s.db);
     expect(await syncCatalog({ ...s })).toEqual({ skipped: 'write-failed' });
+    // The three titles share one batch, so none of them is kept.
     const names = s.db.select().from(titles).all().map((r) => r.name);
-    expect(names).toEqual(['Alpha']);
+    expect(names).toEqual([]);
     expect(cursor(s.db)).toBeUndefined();
 
     // Next run with a good body redoes everything idempotently.

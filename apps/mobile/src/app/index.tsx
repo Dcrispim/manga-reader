@@ -1,12 +1,14 @@
 import { Link } from "expo-router";
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { useHomeLists } from "../catalog/hooks";
 import { categoriesOf, type CatalogTitle } from "../catalog/queries";
 import { TitleCover } from "../ui/TitleCover";
 
-function Carousel({
+// Memoized: the home re-renders on every history or download change, and only
+// the carousels whose items actually changed should redo their covers.
+const Carousel = memo(function Carousel({
   title,
   items,
   caption,
@@ -46,16 +48,28 @@ function Carousel({
       />
     </View>
   );
-}
+});
 
 export default function Home() {
   const { catalog, continueItems, downloaded } = useHomeLists();
   const byName = useMemo(() => new Map(catalog.map((t) => [t.name, t])), [catalog]);
   const categories = useMemo(() => Object.entries(categoriesOf(catalog)), [catalog]);
 
-  const pick = (names: string[]) =>
-    names.map((n) => byName.get(n)).filter((t): t is CatalogTitle => t !== undefined);
-  const lastChapter = new Map(continueItems.map((c) => [c.title, c.chapter]));
+  const pick = useMemo(
+    () => (names: string[]) =>
+      names.map((n) => byName.get(n)).filter((t): t is CatalogTitle => t !== undefined),
+    [byName],
+  );
+  const continueList = useMemo(() => pick(continueItems.map((c) => c.title)), [pick, continueItems]);
+  const continueCaption = useMemo(() => {
+    const lastChapter = new Map(continueItems.map((c) => [c.title, c.chapter]));
+    return (t: CatalogTitle) => `Cap. ${lastChapter.get(t.name)}`;
+  }, [continueItems]);
+  const downloadedList = useMemo(() => pick(downloaded), [pick, downloaded]);
+  const categoryLists = useMemo(
+    () => categories.map(([id, c]) => ({ id, name: c.name, items: pick(c.titles) })),
+    [pick, categories],
+  );
 
   return (
     <ScrollView contentContainerStyle={styles.content}>
@@ -74,14 +88,10 @@ export default function Home() {
         </View>
       ) : (
         <>
-          <Carousel
-            title="Continuar lendo"
-            items={pick(continueItems.map((c) => c.title))}
-            caption={(t) => `Cap. ${lastChapter.get(t.name)}`}
-          />
-          <Carousel title="Baixados" items={pick(downloaded)} />
-          {categories.map(([id, c]) => (
-            <Carousel key={id} title={c.name} items={pick(c.titles)} seeAll={id} />
+          <Carousel title="Continuar lendo" items={continueList} caption={continueCaption} />
+          <Carousel title="Baixados" items={downloadedList} />
+          {categoryLists.map((c) => (
+            <Carousel key={c.id} title={c.name} items={c.items} seeAll={c.id} />
           ))}
         </>
       )}

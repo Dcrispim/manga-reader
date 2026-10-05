@@ -1,4 +1,4 @@
-import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
+import { useLiveQuery } from '../../db/liveQuery';
 import { inArray } from 'drizzle-orm';
 import { ScrollView, Text, View } from 'react-native';
 
