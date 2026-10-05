@@ -1,9 +1,12 @@
+import { Feather } from "@expo/vector-icons";
 import Fuse from "fuse.js";
 import { useEffect, useMemo, useState } from "react";
-import { Text, TextInput, View } from "react-native";
+import { StyleSheet, TextInput, View } from "react-native";
 
 import { useCatalog } from "../catalog/hooks";
+import { Text } from "../ui/Text";
 import { TitleGrid } from "../ui/TitleGrid";
+import { colors, fonts, radius } from "../ui/theme";
 
 const DEBOUNCE_MS = 150;
 
@@ -37,19 +40,41 @@ export default function SearchScreen() {
   );
 
   return (
-    <View style={{ flex: 1 }}>
-      <TextInput
-        value={text}
-        onChangeText={setText}
-        placeholder="Nome, autor ou categoria"
-        autoFocus
-        style={{ margin: 12, padding: 10, borderWidth: 1, borderColor: "#999", borderRadius: 8 }}
-      />
+    <View style={styles.root}>
+      <View style={styles.field}>
+        <Feather name="search" size={16} color={colors.mutedForeground} />
+        <TextInput
+          value={text}
+          onChangeText={setText}
+          placeholder="Nome, autor ou categoria"
+          placeholderTextColor={colors.mutedForeground}
+          autoFocus
+          style={styles.input}
+        />
+      </View>
       {query && results.length === 0 ? (
-        <Text style={{ textAlign: "center", padding: 16 }}>Nada encontrado</Text>
+        <Text style={styles.none}>Nada encontrado</Text>
       ) : (
         <TitleGrid items={results} />
       )}
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.background },
+  field: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    margin: 16,
+    marginBottom: 0,
+    paddingHorizontal: 14,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.input,
+    backgroundColor: colors.card,
+  },
+  input: { flex: 1, paddingVertical: 12, color: colors.foreground, fontFamily: fonts.regular, fontSize: 15 },
+  none: { textAlign: "center", padding: 24, color: colors.mutedForeground, fontStyle: "italic" },
+});

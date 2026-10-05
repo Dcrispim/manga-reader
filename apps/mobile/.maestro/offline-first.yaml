@@ -48,9 +48,12 @@ env:
 # --- download the first listed chapter
 - tapOn:
     id: title-card-0
-- extendedWaitUntil:
-    visible:
+# the chapter list sits below the title card and the facts, as on the web
+- scrollUntilVisible:
+    element:
       id: download-button-0
+    direction: DOWN
+    centerElement: true
     timeout: 30000
 - tapOn:
     id: download-button-0
@@ -79,6 +82,12 @@ env:
 # --- read the downloaded chapter offline
 - tapOn:
     id: title-card-0
+- scrollUntilVisible:
+    element:
+      id: chapter-row-1
+    direction: DOWN
+    centerElement: true
+    timeout: 20000
 - extendedWaitUntil:
     visible:
       id: chapter-badge-0
@@ -126,8 +135,21 @@ env:
     id: settings-sync
 - runFlow: no-errors.yaml
 - back
+# "Continuar Lendo" now sits above the categories
+- scrollUntilVisible:
+    element:
+      id: title-card-0
+    direction: DOWN
+    centerElement: true
+    timeout: 20000
 - tapOn:
     id: title-card-0
+- scrollUntilVisible:
+    element:
+      id: chapter-row-1
+    direction: DOWN
+    centerElement: true
+    timeout: 20000
 - extendedWaitUntil:
     visible:
       id: chapter-badge-1

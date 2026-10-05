@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput } from 'react-native';
+import { ScrollView, StyleSheet, TextInput } from 'react-native';
 
 import { db } from '../../db/client';
 import { createClient } from '../../net/client';
@@ -7,6 +7,8 @@ import { formatRelative } from '../../settings/format';
 import { getSetting } from '../../settings/repo';
 import { connectBind, createBind, disconnectBind } from '../../sync/bind';
 import { Button, Section, common } from '../../ui/SettingsBits';
+import { Text } from '../../ui/Text';
+import { colors } from '../../ui/theme';
 
 export default function BindScreen() {
   const [code, setCode] = useState(getSetting(db, 'bind.code') || '');
@@ -48,13 +50,12 @@ export default function BindScreen() {
 
   return (
     <ScrollView contentContainerStyle={common.container}>
-      <Text style={common.title}>Sincronizar progresso</Text>
       {code ? (
         <Section title="Conectado">
           <Text style={styles.code} accessibilityLabel="Código de sincronização">
             {code}
           </Text>
-          <Text>{`Última sincronização: ${formatRelative(lastSync, Date.now())}`}</Text>
+          <Text style={common.muted}>{`Última sincronização: ${formatRelative(lastSync, Date.now())}`}</Text>
           <Button
             label="Desconectar"
             danger
@@ -83,18 +84,19 @@ export default function BindScreen() {
               autoCorrect={false}
               maxLength={6}
               placeholder="ABC123"
+              placeholderTextColor={colors.mutedForeground}
               accessibilityLabel="Código"
             />
             <Button label="Conectar" disabled={busy} onPress={() => void onConnect()} />
           </Section>
         </>
       )}
-      {message ? <Text>{message}</Text> : null}
+      {message ? <Text style={common.muted}>{message}</Text> : null}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  code: { fontSize: 44, fontWeight: '700', letterSpacing: 6, textAlign: 'center' },
+  code: { fontSize: 44, fontWeight: '700', letterSpacing: 6, textAlign: 'center', paddingVertical: 8 },
   input: { fontSize: 22, letterSpacing: 4 },
 });

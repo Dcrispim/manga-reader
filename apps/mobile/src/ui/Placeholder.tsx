@@ -1,11 +1,12 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { hashName } from '../catalog/hash';
+import { Text } from './Text';
 
 /** Stable hue per title name (same hash as the cover file names). */
 export function placeholderColor(name: string): string {
   const hue = parseInt(hashName(name), 16) % 360;
-  return `hsl(${hue}, 45%, 38%)`;
+  return `hsl(${hue}, 30%, 22%)`;
 }
 
 /** Up to two initials from the first words of the name. */

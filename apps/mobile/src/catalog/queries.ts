@@ -165,10 +165,12 @@ export interface ChapterRow {
   badge: ChapterBadge;
   /** True when a server copy exists, so "Baixar" makes sense. */
   onServer: boolean;
+  /** Latest modification time among its sources (0 when unknown). */
+  mtimeMs: number;
 }
 
 export interface ChapterInputs {
-  sources: { chapter: string; sourceId: string; pages: number | null }[];
+  sources: { chapter: string; sourceId: string; pages: number | null; mtimeMs?: number | null }[];
   downloads: { chapter: string }[];
   transient: { chapter: string }[];
   jobs: {
@@ -196,17 +198,21 @@ export function chapterRows(input: ChapterInputs, ascending = false): ChapterRow
     }
   }
 
-  const byChapter = new Map<string, { pages: number | null; local: boolean; server: boolean }>();
+  const byChapter = new Map<
+    string,
+    { pages: number | null; local: boolean; server: boolean; mtimeMs: number }
+  >();
   for (const s of input.sources) {
-    const e = byChapter.get(s.chapter) ?? { pages: null, local: false, server: false };
+    const e = byChapter.get(s.chapter) ?? { pages: null, local: false, server: false, mtimeMs: 0 };
     e.pages = e.pages ?? s.pages;
+    e.mtimeMs = Math.max(e.mtimeMs, s.mtimeMs ?? 0);
     if (s.sourceId === SERVER_SOURCE) e.server = true;
     else e.local = true;
     byChapter.set(s.chapter, e);
   }
   // A downloaded chapter stays listed even if its server rows vanished.
   for (const c of downloaded) {
-    if (!byChapter.has(c)) byChapter.set(c, { pages: null, local: false, server: false });
+    if (!byChapter.has(c)) byChapter.set(c, { pages: null, local: false, server: false, mtimeMs: 0 });
   }
 
   const rows: ChapterRow[] = [];
@@ -225,6 +231,7 @@ export function chapterRows(input: ChapterInputs, ascending = false): ChapterRow
       read: read.has(chapter),
       badge,
       onServer: e.server,
+      mtimeMs: e.mtimeMs,
     });
   }
   rows.sort((a, b) => (ascending ? a.number - b.number : b.number - a.number));

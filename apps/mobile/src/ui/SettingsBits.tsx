@@ -1,5 +1,10 @@
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+
+import { Button as PillButton } from './Button';
+import { Card, Label } from './Card';
+import { Text } from './Text';
+import { colors, radius } from './theme';
 
 export function Button({
   label,
@@ -13,32 +18,31 @@ export function Button({
   danger?: boolean;
 }) {
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      disabled={disabled}
+    <PillButton
+      label={label}
       onPress={onPress}
-      style={[styles.button, danger && styles.danger, disabled && styles.disabled]}
-    >
-      <Text style={styles.buttonText}>{label}</Text>
-    </Pressable>
+      disabled={disabled}
+      variant={danger ? 'danger' : 'primary'}
+    />
   );
 }
 
+/** A settings group: a web-style card with a small uppercase heading. */
 export function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
+    <Card style={styles.section}>
+      <Label>{title}</Label>
       {children}
-    </View>
+    </Card>
   );
 }
 
+/** Usage bar like the title page progress: h-1.5 track, primary fill. */
 export function Bar({ value, max, label }: { value: number; max: number; label: string }) {
   const pct = max > 0 ? Math.min(1, value / max) : 0;
   return (
     <View style={styles.barBlock}>
-      <Text>{label}</Text>
+      <Text style={styles.barLabel}>{label}</Text>
       <View style={styles.barTrack}>
         <View
           style={[styles.barFill, { width: `${pct * 100}%` }, pct >= 1 && styles.barFull]}
@@ -49,24 +53,30 @@ export function Bar({ value, max, label }: { value: number; max: number; label: 
 }
 
 export const common = StyleSheet.create({
-  container: { padding: 24, gap: 10 },
-  title: { fontSize: 22, fontWeight: '600' },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  input: { borderWidth: 1, borderColor: '#999', borderRadius: 6, padding: 8 },
-  muted: { color: '#666' },
-  link: { color: '#208AEF', fontSize: 16, paddingVertical: 6 },
-  error: { color: '#b00020' },
+  container: { padding: 16, gap: 16, paddingBottom: 48 },
+  title: { fontSize: 24, fontWeight: '700' },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.input,
+    borderRadius: radius.md,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: colors.foreground,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    fontFamily: 'Geist_400Regular',
+    fontSize: 14,
+  },
+  muted: { color: colors.mutedForeground, fontSize: 13 },
+  link: { color: colors.foreground, fontSize: 15, paddingVertical: 6 },
+  error: { color: colors.destructive },
 });
 
 const styles = StyleSheet.create({
-  button: { backgroundColor: '#208AEF', padding: 12, borderRadius: 6, alignItems: 'center' },
-  danger: { backgroundColor: '#b00020' },
-  disabled: { opacity: 0.5 },
-  buttonText: { color: '#fff' },
-  section: { gap: 8, marginTop: 12 },
-  sectionTitle: { fontSize: 17, fontWeight: '600' },
-  barBlock: { gap: 4 },
-  barTrack: { height: 8, borderRadius: 4, backgroundColor: '#ddd', overflow: 'hidden' },
-  barFill: { height: 8, backgroundColor: '#208AEF' },
-  barFull: { backgroundColor: '#e07b00' },
+  section: { padding: 16, gap: 12 },
+  barBlock: { gap: 6 },
+  barLabel: { fontSize: 13, color: colors.mutedForeground },
+  barTrack: { height: 6, borderRadius: radius.full, backgroundColor: colors.secondary, overflow: 'hidden' },
+  barFill: { height: 6, backgroundColor: colors.primary },
+  barFull: { backgroundColor: colors.newChapter },
 });

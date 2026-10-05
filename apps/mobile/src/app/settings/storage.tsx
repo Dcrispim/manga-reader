@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm';
 import { useLiveQuery } from '../../db/liveQuery';
 import { useEffect, useState } from 'react';
-import { Alert, ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { Alert, ScrollView, Switch, TextInput, View } from 'react-native';
 
 import { db } from '../../db/client';
 import { downloads, transientPages } from '../../db/schema';
@@ -20,6 +20,8 @@ import { deleteAll, deleteTitle } from '../../storage/downloads';
 import { expoFileStore } from '../../storage/files';
 import { clearTransient } from '../../storage/transient';
 import { Bar, Button, Section, common } from '../../ui/SettingsBits';
+import { Text } from '../../ui/Text';
+import { colors } from '../../ui/theme';
 
 function LimitEditor({ field, onSaved }: { field: LimitField; onSaved: () => void }) {
   const [text, setText] = useState(limitToText(field.key, getLimit(db, field.key)));
@@ -39,13 +41,14 @@ function LimitEditor({ field, onSaved }: { field: LimitField; onSaved: () => voi
 
   return (
     <View style={{ gap: 4 }}>
-      <Text>{field.label}</Text>
+      <Text style={common.muted}>{field.label}</Text>
       <View style={common.row}>
         <TextInput
           style={[common.input, { flex: 1 }]}
           value={text}
           onChangeText={setText}
           keyboardType="numeric"
+          placeholderTextColor={colors.mutedForeground}
           accessibilityLabel={field.label}
         />
         <Button label="Aplicar" onPress={() => void save()} />
@@ -63,6 +66,8 @@ function Toggle({ label, settingKey }: { label: string; settingKey: string }) {
       <Switch
         accessibilityLabel={label}
         value={on}
+        trackColor={{ false: colors.secondary, true: colors.primary }}
+        thumbColor={on ? colors.primaryForeground : colors.mutedForeground}
         onValueChange={(v) => {
           setOn(v);
           setSetting(db, settingKey, v ? 'true' : 'false');
@@ -134,7 +139,6 @@ export default function StorageScreen() {
 
   return (
     <ScrollView contentContainerStyle={common.container}>
-      <Text style={common.title}>Armazenamento</Text>
 
       <Section title="Uso">
         <Bar
@@ -152,8 +156,8 @@ export default function StorageScreen() {
           value={transientBytes}
           max={transientMax}
         />
-        <Text>{`Capas do catálogo: ${formatBytes(coversBytes)}`}</Text>
-        <Text>{`Espaço livre no aparelho: ${formatBytes(freeBytes)}`}</Text>
+        <Text style={common.muted}>{`Capas do catálogo: ${formatBytes(coversBytes)}`}</Text>
+        <Text style={common.muted}>{`Espaço livre no aparelho: ${formatBytes(freeBytes)}`}</Text>
       </Section>
 
       <Section title="Limites">
@@ -213,7 +217,7 @@ export default function StorageScreen() {
             )
           }
         />
-        {message ? <Text>{message}</Text> : null}
+        {message ? <Text style={common.muted}>{message}</Text> : null}
       </Section>
     </ScrollView>
   );

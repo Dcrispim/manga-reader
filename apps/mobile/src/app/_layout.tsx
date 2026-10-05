@@ -1,7 +1,15 @@
-import { Stack, useRouter } from "expo-router";
+import {
+  Geist_400Regular,
+  Geist_500Medium,
+  Geist_600SemiBold,
+  Geist_700Bold,
+  useFonts,
+} from "@expo-google-fonts/geist";
+import { DarkTheme, Stack, ThemeProvider, useRouter } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, View } from "react-native";
 
 import { db, useMigrationsGate } from "../db/client";
 import { getSetting } from "../settings/repo";
@@ -12,13 +20,30 @@ import "../sync/backgroundTask";
 import { useServerStatus } from "../server/useServerStatus";
 import { ScreenBoundary } from "../ui/ScreenBoundary";
 import { ServerStatusPill } from "../ui/ServerStatusPill";
+import { Text } from "../ui/Text";
+import { colors, fonts } from "../ui/theme";
 import { useForegroundSync } from "../sync/useForegroundSync";
+
+// React Navigation's dark theme with the web's tokens (headers, backgrounds).
+const navTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    primary: colors.primary,
+    background: colors.background,
+    card: colors.background,
+    text: colors.foreground,
+    border: colors.border,
+    notification: colors.destructive,
+  },
+};
 
 const centered = {
   flex: 1,
   alignItems: "center",
   justifyContent: "center",
   gap: 16,
+  backgroundColor: colors.background,
 } as const;
 
 // First run: no server address saved yet, so open Settings straight away.
@@ -69,7 +94,7 @@ function MigrationGate({ onRestart }: { onRestart: () => void }) {
   if (!success) {
     return (
       <View style={centered}>
-        <ActivityIndicator />
+        <ActivityIndicator color={colors.mutedForeground} />
       </View>
     );
   }
@@ -78,8 +103,19 @@ function MigrationGate({ onRestart }: { onRestart: () => void }) {
       <ScreenBoundary>
         {/* freezeOnBlur: screens under the top one (home, title) stop re-rendering
             when the database changes underneath, e.g. history on opening a chapter. */}
-        <Stack screenOptions={{ headerRight: () => <HeaderPill />, freezeOnBlur: true }}>
-          <Stack.Screen name="index" options={{ title: "Manga Reader" }} />
+        <Stack
+          screenOptions={{
+            headerRight: () => <HeaderPill />,
+            freezeOnBlur: true,
+            headerStyle: { backgroundColor: colors.background },
+            headerTintColor: colors.foreground,
+            headerTitleStyle: { fontFamily: fonts.semibold, fontSize: 17 },
+            headerShadowVisible: false,
+            contentStyle: { backgroundColor: colors.background },
+          }}
+        >
+          {/* The home has its own floating bar over the hero, like the web. */}
+          <Stack.Screen name="index" options={{ title: "Biblioteca", headerShown: false }} />
           <Stack.Screen name="search" options={{ title: "Buscar" }} />
           <Stack.Screen name="category/[id]" options={{ title: "Categoria" }} />
           <Stack.Screen name="title/[name]" options={{ title: "" }} />
@@ -101,5 +137,18 @@ function MigrationGate({ onRestart }: { onRestart: () => void }) {
 export default function RootLayout() {
   // Changing the key remounts the gate, which re-runs the migrations.
   const [attempt, setAttempt] = useState(0);
-  return <MigrationGate key={attempt} onRestart={() => setAttempt((n) => n + 1)} />;
+  // Bundled fonts load in a few ms; a failure just falls back to the system font.
+  const [fontsLoaded, fontError] = useFonts({
+    Geist_400Regular,
+    Geist_500Medium,
+    Geist_600SemiBold,
+    Geist_700Bold,
+  });
+  if (!fontsLoaded && !fontError) return <View style={centered} />;
+  return (
+    <ThemeProvider value={navTheme}>
+      <StatusBar style="light" />
+      <MigrationGate key={attempt} onRestart={() => setAttempt((n) => n + 1)} />
+    </ThemeProvider>
+  );
 }

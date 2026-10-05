@@ -34,5 +34,5 @@ export function TitleCover({
 }
 
 const styles = StyleSheet.create({
-  box: { aspectRatio: 2 / 3, borderRadius: 6, overflow: 'hidden', backgroundColor: '#ddd' },
+  box: { aspectRatio: 2 / 3, borderRadius: 6, overflow: 'hidden', backgroundColor: '#171717' },
 });

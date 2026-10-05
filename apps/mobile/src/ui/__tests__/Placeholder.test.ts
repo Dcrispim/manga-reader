@@ -3,7 +3,7 @@ import { initials, placeholderColor } from '../Placeholder';
 describe('placeholder', () => {
   it('derives a stable color from the name', () => {
     expect(placeholderColor('Berserk')).toBe(placeholderColor('Berserk'));
-    expect(placeholderColor('Berserk')).toMatch(/^hsl\(\d+, 45%, 38%\)$/);
+    expect(placeholderColor('Berserk')).toMatch(/^hsl\(\d+, 30%, 22%\)$/);
     expect(placeholderColor('Berserk')).not.toBe(placeholderColor('Vagabond'));
   });
 

@@ -1,13 +1,16 @@
 import { desc, eq } from 'drizzle-orm';
 import { useLiveQuery } from '../../db/liveQuery';
 import { useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { db } from '../../db/client';
 import { diagLog } from '../../db/schema';
 import { exportLog } from '../../diag/export';
 import { formatClock } from '../../settings/format';
 import { Button, common } from '../../ui/SettingsBits';
+import { Card } from '../../ui/Card';
+import { Text } from '../../ui/Text';
+import { colors, radius } from '../../ui/theme';
 
 const LEVELS = ['todos', 'info', 'warn', 'error'] as const;
 
@@ -32,11 +35,15 @@ export default function DiagnosticsScreen() {
 
   return (
     <ScrollView contentContainerStyle={common.container}>
-      <Text style={common.title}>Diagnóstico</Text>
       <View style={common.row}>
         {LEVELS.map((l) => (
-          <Pressable key={l} accessibilityRole="button" onPress={() => setLevel(l)}>
-            <Text style={[common.link, l === level && { fontWeight: '700' }]}>{l}</Text>
+          <Pressable
+            key={l}
+            accessibilityRole="button"
+            onPress={() => setLevel(l)}
+            style={[styles.chip, l === level && styles.chipOn]}
+          >
+            <Text style={[styles.chipText, l === level && styles.chipTextOn]}>{l}</Text>
           </Pressable>
         ))}
       </View>
@@ -51,13 +58,31 @@ export default function DiagnosticsScreen() {
           }}
         />
       </View>
-      {message ? <Text>{message}</Text> : null}
-      {rows.length === 0 ? <Text style={common.muted}>Nenhuma entrada.</Text> : null}
-      {rows.map((r) => (
-        <Text key={r.id} style={{ fontSize: 12 }}>
-          {`${formatClock(r.at)} [${r.level}] ${r.scope}: ${r.message}`}
-        </Text>
-      ))}
+      {message ? <Text style={common.muted}>{message}</Text> : null}
+      <Card style={styles.log}>
+        {rows.length === 0 ? <Text style={common.muted}>Nenhuma entrada.</Text> : null}
+        {rows.map((r) => (
+          <Text key={r.id} style={[styles.line, r.level === 'error' && styles.lineError]}>
+            {`${formatClock(r.at)} [${r.level}] ${r.scope}: ${r.message}`}
+          </Text>
+        ))}
+      </Card>
     </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  chip: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  chipOn: { borderColor: colors.primary, backgroundColor: 'rgba(229,229,229,0.1)' },
+  chipText: { fontSize: 12, color: colors.mutedForeground },
+  chipTextOn: { color: colors.primary },
+  log: { padding: 12, gap: 4 },
+  line: { fontSize: 12, color: colors.mutedForeground },
+  lineError: { color: colors.destructive },
+});

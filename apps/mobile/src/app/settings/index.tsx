@@ -1,14 +1,7 @@
+import { Feather } from '@expo/vector-icons';
 import { Link, useRouter } from 'expo-router';
 import { useState } from 'react';
-import {
-  Alert,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { db } from '../../db/client';
 import { DEFAULTS, getSetting, setSetting } from '../../settings/repo';
@@ -16,6 +9,18 @@ import { acceptPendingServer, testAddress } from '../../server/status';
 import { refreshServer, useServerStatus } from '../../server/useServerStatus';
 import { ServerStatusPill } from '../../ui/ServerStatusPill';
 import { runCycle } from '../../sync/cycle';
+import { Button } from '../../ui/Button';
+import { Card, Label } from '../../ui/Card';
+import { common } from '../../ui/SettingsBits';
+import { Text } from '../../ui/Text';
+import { colors, radius } from '../../ui/theme';
+
+const LINKS = [
+  { href: '/settings/storage', label: 'Armazenamento', icon: 'hard-drive' },
+  { href: '/settings/queue', label: 'Fila de downloads', icon: 'download' },
+  { href: '/settings/bind', label: 'Sincronizar progresso', icon: 'refresh-cw' },
+  { href: '/settings/diagnostics', label: 'Diagnóstico', icon: 'activity' },
+] as const;
 
 function parsePort(text: string): number | null {
   if (!/^\d+$/.test(text.trim())) return null;
@@ -89,116 +94,132 @@ export default function SettingsScreen() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Configurações</Text>
+    <ScrollView contentContainerStyle={common.container}>
+      <Card style={styles.card}>
+        <View style={styles.headRow}>
+          <Label>Servidor</Label>
+          <ServerStatusPill status={server.status} />
+        </View>
+        {savedId ? <Text style={common.muted}>{`ID do servidor: ${savedId.slice(0, 8)}`}</Text> : null}
 
-      <View style={styles.row}>
-        <Text>Servidor:</Text>
-        <ServerStatusPill status={server.status} />
-      </View>
-      {savedId ? <Text>{`ID do servidor: ${savedId.slice(0, 8)}`}</Text> : null}
+        {server.status === 'mismatch' && dismissedFor !== server.pendingServerId ? (
+          <View style={styles.banner}>
+            <Text>Este endereço aponta para outro servidor</Text>
+            <View style={common.row}>
+              <Button
+                small
+                label="Usar este servidor"
+                onPress={() => {
+                  acceptPendingServer(db);
+                  void refreshServer();
+                }}
+              />
+              <Button small variant="outline" label="Manter" onPress={() => setDismissedFor(server.pendingServerId)} />
+            </View>
+          </View>
+        ) : null}
 
-      {server.status === 'mismatch' && dismissedFor !== server.pendingServerId ? (
-        <View style={styles.banner}>
-          <Text>Este endereço aponta para outro servidor</Text>
-          <View style={styles.row}>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => {
-                acceptPendingServer(db);
-                void refreshServer();
+        <View style={styles.fields}>
+          <View style={styles.field}>
+            <Text style={styles.fieldLabel}>Host</Text>
+            <TextInput
+              style={common.input}
+              value={host}
+              onChangeText={(t) => {
+                setHost(t);
+                setPassed(false);
               }}
-            >
-              <Text style={styles.link}>Usar este servidor</Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => setDismissedFor(server.pendingServerId)}
-            >
-              <Text style={styles.link}>Manter</Text>
-            </Pressable>
+              placeholder="192.168.0.10"
+              placeholderTextColor={colors.mutedForeground}
+              autoCapitalize="none"
+              autoCorrect={false}
+              accessibilityLabel="Host"
+              testID="settings-host"
+            />
+          </View>
+          <View style={[styles.field, styles.portField]}>
+            <Text style={styles.fieldLabel}>Porta</Text>
+            <TextInput
+              style={common.input}
+              value={port}
+              onChangeText={(t) => {
+                setPort(t);
+                setPassed(false);
+              }}
+              keyboardType="numeric"
+              accessibilityLabel="Porta"
+              testID="settings-port"
+            />
           </View>
         </View>
-      ) : null}
 
-      <Text>Host</Text>
-      <TextInput
-        style={styles.input}
-        value={host}
-        onChangeText={(t) => {
-          setHost(t);
-          setPassed(false);
-        }}
-        placeholder="192.168.0.10"
-        autoCapitalize="none"
-        autoCorrect={false}
-        accessibilityLabel="Host"
-        testID="settings-host"
-      />
-      <Text>Porta</Text>
-      <TextInput
-        style={styles.input}
-        value={port}
-        onChangeText={(t) => {
-          setPort(t);
-          setPassed(false);
-        }}
-        keyboardType="numeric"
-        accessibilityLabel="Porta"
-        testID="settings-port"
-      />
+        {message ? <Text style={common.muted}>{message}</Text> : null}
+        <View style={common.row}>
+          <Button
+            variant="outline"
+            label="Testar conexão"
+            disabled={busy}
+            testID="settings-test"
+            onPress={() => void onTest()}
+          />
+          <Button label="Salvar" disabled={busy} testID="settings-save" onPress={() => void onSave()} />
+        </View>
+      </Card>
 
-      <Pressable
-        accessibilityRole="button"
-        style={styles.button}
-        disabled={busy}
-        testID="settings-test"
-        onPress={() => void onTest()}
-      >
-        <Text style={styles.buttonText}>Testar conexão</Text>
-      </Pressable>
-      {message ? <Text>{message}</Text> : null}
-      <Pressable
-        accessibilityRole="button"
-        style={styles.button}
-        disabled={busy}
-        testID="settings-save"
-        onPress={() => void onSave()}
-      >
-        <Text style={styles.buttonText}>Salvar</Text>
-      </Pressable>
+      <Card style={styles.card}>
+        <Label>Sincronização</Label>
+        <Text style={common.muted}>Atualiza o catálogo, o progresso e a fila de downloads.</Text>
+        <View style={common.row}>
+          <Button
+            variant="outline"
+            icon="refresh-cw"
+            label={syncing ? 'Sincronizando...' : 'Sincronizar agora'}
+            disabled={syncing}
+            testID="settings-sync"
+            onPress={() => {
+              setSyncing(true);
+              void runCycle({ mode: 'foreground' }).finally(() => setSyncing(false));
+            }}
+          />
+        </View>
+      </Card>
 
-      <Text style={styles.section}>Sincronização</Text>
-      <Pressable
-        accessibilityRole="button"
-        style={styles.button}
-        disabled={syncing}
-        testID="settings-sync"
-        onPress={() => {
-          setSyncing(true);
-          void runCycle({ mode: 'foreground' }).finally(() => setSyncing(false));
-        }}
-      >
-        <Text style={styles.buttonText}>{syncing ? 'Sincronizando...' : 'Sincronizar agora'}</Text>
-      </Pressable>
-
-      <Text style={styles.section}>Mais</Text>
-      <Link href="/settings/storage" style={styles.link}>Armazenamento</Link>
-      <Link href="/settings/queue" style={styles.link}>Fila de downloads</Link>
-      <Link href="/settings/bind" style={styles.link}>Sincronizar progresso</Link>
-      <Link href="/settings/diagnostics" style={styles.link}>Diagnóstico</Link>
+      <Card style={styles.list}>
+        {LINKS.map((l, i) => (
+          <Link key={l.href} href={l.href} asChild>
+            <Pressable
+              accessibilityRole="link"
+              // Flat object: Link's Slot loses array styles.
+              style={StyleSheet.flatten([styles.item, i > 0 && styles.itemBorder])}
+            >
+              <Feather name={l.icon} size={16} color={colors.mutedForeground} />
+              <Text style={styles.itemText}>{l.label}</Text>
+              <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+            </Pressable>
+          </Link>
+        ))}
+      </Card>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 24, paddingTop: 64, gap: 10 },
-  title: { fontSize: 22, fontWeight: '600' },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  input: { borderWidth: 1, borderColor: '#999', borderRadius: 6, padding: 8 },
-  button: { backgroundColor: '#208AEF', padding: 12, borderRadius: 6, alignItems: 'center' },
-  buttonText: { color: '#fff' },
-  banner: { backgroundColor: '#fff3cd', padding: 10, borderRadius: 6, gap: 6 },
-  link: { color: '#208AEF', fontSize: 16, paddingVertical: 6 },
-  section: { fontSize: 17, fontWeight: '600', marginTop: 12 },
+  card: { padding: 16, gap: 14 },
+  headRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  banner: {
+    padding: 12,
+    borderRadius: radius.lg,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(240,177,0,0.4)',
+    backgroundColor: 'rgba(240,177,0,0.1)',
+  },
+  fields: { flexDirection: 'row', gap: 12 },
+  field: { flex: 1, gap: 6 },
+  portField: { flex: 0, width: 110 },
+  fieldLabel: { fontSize: 12, color: colors.mutedForeground },
+  list: { overflow: 'hidden' },
+  item: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 14 },
+  itemBorder: { borderTopWidth: 1, borderColor: colors.borderSoft },
+  itemText: { flex: 1, fontSize: 15 },
 });

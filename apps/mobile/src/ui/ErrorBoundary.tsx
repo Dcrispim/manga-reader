@@ -1,5 +1,9 @@
 import { Component, type ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+
+import { Button } from './Button';
+import { Text } from './Text';
+import { colors } from './theme';
 
 
 interface Props {
@@ -33,16 +37,8 @@ export class ErrorBoundary extends Component<Props, { error: Error | null }> {
       <View style={styles.box}>
         <Text style={styles.title}>Algo deu errado nesta tela</Text>
         <View style={styles.row}>
-          <Pressable accessibilityRole="button" onPress={this.props.onBack} style={styles.btn}>
-            <Text>Voltar</Text>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => this.setState({ error: null })}
-            style={styles.btn}
-          >
-            <Text>Tentar de novo</Text>
-          </Pressable>
+          <Button variant="outline" label="Voltar" onPress={this.props.onBack} />
+          <Button label="Tentar de novo" onPress={() => this.setState({ error: null })} />
         </View>
       </View>
     );
@@ -50,8 +46,14 @@ export class ErrorBoundary extends Component<Props, { error: Error | null }> {
 }
 
 const styles = StyleSheet.create({
-  box: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16, padding: 24 },
-  title: { fontSize: 16 },
+  box: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+    padding: 24,
+    backgroundColor: colors.background,
+  },
+  title: { fontSize: 16, fontWeight: '600' },
   row: { flexDirection: 'row', gap: 12 },
-  btn: { padding: 12, borderWidth: 1, borderColor: '#999', borderRadius: 8 },
 });

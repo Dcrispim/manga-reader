@@ -1,7 +1,7 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useLiveQuery } from "../../../db/liveQuery";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, View } from "react-native";
 
 import { chapterRows, q } from "../../../catalog/queries";
 import { db } from "../../../db/client";
@@ -14,6 +14,10 @@ import { nextChapter } from "../../../reader/nextChapter";
 import { useChapter } from "../../../reader/useChapter";
 import { useServerStatus } from "../../../server/useServerStatus";
 import { expoFileStore } from "../../../storage/files";
+import { Button } from "../../../ui/Button";
+import { displayName } from "../../../ui/displayName";
+import { Text } from "../../../ui/Text";
+import { colors, radius } from "../../../ui/theme";
 
 const client = createClient({ db });
 
@@ -70,7 +74,11 @@ export default function ReaderScreen() {
     ]);
   };
 
-  const header = <Stack.Screen options={{ title: `${title} · ${chapter}` }} />;
+  const header = (
+    <Stack.Screen
+      options={{ title: `${displayName(title)} · Cap. ${chapter}`, headerStyle: { backgroundColor: colors.black } }}
+    />
+  );
 
   if (state.status === "unavailable") {
     return (
@@ -90,7 +98,7 @@ export default function ReaderScreen() {
       {header}
       {state.status === "loading" ? (
         <View style={styles.center}>
-          <ActivityIndicator />
+          <ActivityIndicator color={colors.mutedForeground} />
         </View>
       ) : (
         <ZoomableList>
@@ -113,9 +121,9 @@ export default function ReaderScreen() {
             )}
             ListFooterComponent={
               next ? (
-                <Pressable accessibilityRole="button" onPress={goNext} style={styles.next}>
-                  <Text style={styles.nextText}>{`Próximo capítulo (${next})`}</Text>
-                </Pressable>
+                <View style={styles.next}>
+                  <Button label={`Próximo capítulo (${next})`} icon="arrow-right" onPress={goNext} />
+                </View>
               ) : (
                 <Text style={styles.end}>Fim</Text>
               )
@@ -125,10 +133,18 @@ export default function ReaderScreen() {
       )}
       {xlAvailable && online ? (
         <View style={styles.bar}>
-          <Pressable accessibilityRole="button" onPress={() => setQuality("original")}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => setQuality("original")}
+            style={[styles.seg, quality === "original" && styles.segOn]}
+          >
             <Text style={quality === "original" ? styles.on : styles.off}>Original</Text>
           </Pressable>
-          <Pressable accessibilityRole="button" onPress={() => setQuality("xl")}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => setQuality("xl")}
+            style={[styles.seg, quality === "xl" && styles.segOn]}
+          >
             <Text style={quality === "xl" ? styles.on : styles.off}>Upscaled</Text>
           </Pressable>
         </View>
@@ -138,12 +154,23 @@ export default function ReaderScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#000" },
+  root: { flex: 1, backgroundColor: colors.black },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  next: { padding: 20, alignItems: "center", backgroundColor: "#111" },
-  nextText: { color: "#6aa7ff", fontSize: 15 },
-  end: { color: "#888", textAlign: "center", padding: 20 },
-  bar: { flexDirection: "row", justifyContent: "center", gap: 24, padding: 10, backgroundColor: "#111" },
-  on: { color: "#fff", fontWeight: "700" },
-  off: { color: "#888" },
+  next: { paddingVertical: 32, alignItems: "center" },
+  end: { color: colors.mutedForeground, textAlign: "center", padding: 32 },
+  bar: {
+    flexDirection: "row",
+    alignSelf: "center",
+    gap: 4,
+    padding: 4,
+    margin: 10,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.card,
+  },
+  seg: { paddingHorizontal: 16, paddingVertical: 6, borderRadius: radius.full },
+  segOn: { backgroundColor: colors.primary },
+  on: { color: colors.primaryForeground, fontWeight: "600", fontSize: 13 },
+  off: { color: colors.mutedForeground, fontSize: 13 },
 });
