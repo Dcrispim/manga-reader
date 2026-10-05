@@ -27,7 +27,9 @@ docker image inspect "$IMAGE" >/dev/null 2>&1 || docker build -t "$IMAGE" "$ROOT
 # Optional: install the APK first (APK=/path/app.apk).
 if [ -n "${APK:-}" ]; then adb ${ANDROID_SERIAL:+-s "$ANDROID_SERIAL"} install -r "$APK"; fi
 
-docker rm "$NAME" >/dev/null 2>&1 || true
+# -f: a container left running (e.g. one started by hand with --rm) would
+# otherwise be reused, and --rm deletes it on the flow's stop step.
+docker rm -f "$NAME" >/dev/null 2>&1 || true
 start_server() {
   docker start "$NAME" >/dev/null 2>&1 || docker run -d --name "$NAME" -p "$PORT:3993" \
     -v /mnt/d/manga:/mnt/d/manga:ro -v /mnt/d/manga-xl:/mnt/d/manga-xl:ro \
