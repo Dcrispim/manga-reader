@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Settings } from 'lucide-react'
+import { FilePenLine, Settings } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -12,12 +12,16 @@ import {
 import Connect from '@/components/SidebarDrawer/Connect'
 import RebuildSearchIndex from '@/components/home/RebuildSearchIndex'
 import OfflineLimitsSettings from '@/components/offline/OfflineLimitsSettings'
+import MetadataEditor from '@/components/metadata/MetadataEditor'
+import { Button } from '@/components/ui/button'
 import i18n from '@/services/i18n'
 
 export default function SettingsFab() {
   const [open, setOpen] = useState(false)
+  const [editorOpen, setEditorOpen] = useState(false)
 
   return (
+    <>
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <button
@@ -34,7 +38,19 @@ export default function SettingsFab() {
         <Connect />
         <RebuildSearchIndex />
         <OfflineLimitsSettings />
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={() => {
+            setOpen(false)
+            setEditorOpen(true)
+          }}
+        >
+          <FilePenLine className="mr-2 h-4 w-4" /> Editar metadados de um título
+        </Button>
       </DialogContent>
     </Dialog>
+    <MetadataEditor open={editorOpen} onOpenChange={setEditorOpen} />
+    </>
   )
 }

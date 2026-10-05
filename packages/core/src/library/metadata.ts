@@ -66,3 +66,60 @@ export function parseMetadataFile(content: string): MetadataContent {
 
   return result
 }
+
+// --- Raw key/value editing (the metadata editor) ----------------------------
+
+export type MetadataEntry = [key: string, value: string]
+
+// Keys the parser reads under another name: the editor folds them into the
+// canonical key so a file never carries two competing values (last one wins).
+export const METADATA_ALIASES: Record<string, string> = {
+  authors: 'author',
+  synopsis: 'description',
+  sinopse: 'description',
+}
+
+const KEY_RE = /^[A-Za-z0-9_-]+$/
+
+/**
+ * Every key=value line of a .metadata file, in first-seen order, one entry per
+ * key (aliases folded into their canonical key) and the LAST value winning,
+ * exactly like parseMetadataFile. Unknown keys are kept as they are.
+ */
+export function parseMetadataEntries(content: string): MetadataEntry[] {
+  const values = new Map<string, string>()
+  for (const line of content.split('\n')) {
+    const trimmed = line.trim()
+    if (!trimmed || trimmed.startsWith('#')) continue
+    const eq = trimmed.indexOf('=')
+    if (eq <= 0) continue
+    const raw = trimmed.slice(0, eq).trim()
+    const key = METADATA_ALIASES[raw] ?? raw
+    const value = trimmed.slice(eq + 1).trim()
+    // Map keeps insertion order: re-setting keeps the first position.
+    values.set(key, value)
+  }
+  return [...values.entries()]
+}
+
+/** Key rules for custom fields: letters, digits, "_" and "-". */
+export function isValidMetadataKey(key: string): boolean {
+  return KEY_RE.test(key)
+}
+
+/**
+ * Back to file text: one key=value per line. Values are single-line (the file
+ * format has no escaping), so line breaks become spaces; empty values and
+ * invalid keys are dropped; aliases are written under the canonical key.
+ */
+export function serializeMetadataEntries(entries: MetadataEntry[]): string {
+  const out = new Map<string, string>()
+  for (const [rawKey, rawValue] of entries) {
+    const trimmedKey = rawKey.trim()
+    const key = METADATA_ALIASES[trimmedKey] ?? trimmedKey
+    const value = rawValue.replace(/\s*[\r\n]+\s*/g, ' ').trim()
+    if (!isValidMetadataKey(key) || !value) continue
+    out.set(key, value)
+  }
+  return [...out.entries()].map(([k, v]) => `${k}=${v}`).join('\n') + (out.size ? '\n' : '')
+}
