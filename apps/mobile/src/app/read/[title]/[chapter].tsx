@@ -6,13 +6,13 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
-  FlatList,
   Pressable,
   StyleSheet,
   View,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from "react-native";
+import { FlatList as GHFlatList } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { chapterRows, q } from "../../../catalog/queries";
@@ -21,13 +21,14 @@ import { enqueueAndDrain } from "../../../jobs/drain";
 import { createClient } from "../../../net/client";
 import { PageImage } from "../../../reader/PageImage";
 import { ReaderMenu } from "../../../reader/ReaderMenu";
+import { PullIndicator, PullToNextArea, usePullToNext } from "../../../reader/PullToNext";
 import { UnavailableChapter } from "../../../reader/UnavailableChapter";
 import { ZoomableList } from "../../../reader/ZoomableList";
 import { nextChapter } from "../../../reader/nextChapter";
 import { useChapter } from "../../../reader/useChapter";
 import { useServerStatus } from "../../../server/useServerStatus";
 import { expoFileStore } from "../../../storage/files";
-import { Button, IconButton } from "../../../ui/Button";
+import { IconButton } from "../../../ui/Button";
 import { ServerStatusPill } from "../../../ui/ServerStatusPill";
 import { displayName } from "../../../ui/displayName";
 import { Text } from "../../../ui/Text";
@@ -118,6 +119,7 @@ export default function ReaderScreen() {
     else if (dy < -6) setChromeVisible(true);
   };
   const headerHeight = insets.top + 56;
+  const pullNext = usePullToNext({ next, onNext: goNext });
   const showBar = xlAvailable && online;
 
   const header = (
@@ -193,15 +195,20 @@ export default function ReaderScreen() {
         </View>
       ) : (
         <ZoomableList>
-          <FlatList
+          <PullToNextArea pan={pullNext.pan} contentStyle={pullNext.contentStyle}>
+          <GHFlatList
+            simultaneousHandlers={pullNext.panRef}
             data={state.pages}
             keyExtractor={(p) => `${quality}-${p.index}`}
             windowSize={3}
             initialNumToRender={2}
             maxToRenderPerBatch={2}
             removeClippedSubviews
-            onScroll={onScroll}
-            scrollEventThrottle={32}
+            onScroll={(e) => {
+              onScroll(e);
+              pullNext.onScroll(e);
+            }}
+            scrollEventThrottle={16}
             contentContainerStyle={{ paddingTop: headerHeight }}
             renderItem={({ item }) => (
               <PageImage
@@ -214,19 +221,27 @@ export default function ReaderScreen() {
               />
             )}
             ListFooterComponent={
+              // The web's end strip: tap it, or keep pulling up, for the next chapter.
               <View style={{ paddingBottom: insets.bottom + 72 }}>
-                {next ? (
-                  <View style={styles.next}>
-                    <Button label={`Próximo capítulo (${next})`} icon="arrow-right" onPress={goNext} />
-                  </View>
-                ) : (
-                  <Text style={styles.end}>Fim</Text>
-                )}
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={next ? `Fim. Ir para o capítulo ${next}` : "Fim"}
+                  disabled={!next}
+                  onPress={goNext}
+                  style={styles.endStrip}
+                >
+                  <Text style={styles.endText}>FIM</Text>
+                  <Text style={styles.endHint}>
+                    {next ? `Toque ou puxe para cima para o capítulo ${next}` : "Último capítulo disponível"}
+                  </Text>
+                </Pressable>
               </View>
             }
           />
+          </PullToNextArea>
         </ZoomableList>
       )}
+      <PullIndicator pull={pullNext.pull} next={next} bottom={insets.bottom} />
       {header}
       {showBar ? (
         <Animated.View
@@ -276,8 +291,17 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.85)",
   },
   headerTitle: { flex: 1, fontSize: 17, fontWeight: "600" },
-  next: { paddingVertical: 32, alignItems: "center" },
-  end: { color: colors.mutedForeground, textAlign: "center", padding: 32 },
+  endStrip: {
+    alignItems: "center",
+    gap: 4,
+    paddingVertical: 18,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.card,
+  },
+  endText: { fontSize: 15, fontWeight: "700", letterSpacing: 4 },
+  endHint: { fontSize: 12, color: colors.mutedForeground },
   bar: {
     position: "absolute",
     flexDirection: "row",
