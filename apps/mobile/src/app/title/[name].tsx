@@ -211,15 +211,18 @@ export default function TitleScreen() {
       }}
     >
       <View style={styles.chaptersTitleRow}>
-        <Text style={styles.chaptersTitle}>Capítulos</Text>
-        <View style={styles.chaptersNoteRow}>
-          <Text style={styles.note}>{volumeNote(volumesField)}</Text>
-          <IconButton
+        <View style={styles.chaptersTitleLine}>
+          <Text style={styles.chaptersTitle}>Capítulos</Text>
+          <Button
+            small
+            variant="outline"
             icon={ascending ? "arrow-up" : "arrow-down"}
-            label={ascending ? "Ordem: menor para maior" : "Ordem: maior para menor"}
+            label={ascending ? "Mais antigos primeiro" : "Mais recentes primeiro"}
+            accessibilityLabel="Inverter a ordem dos capítulos"
             onPress={() => setAscending((a) => !a)}
           />
         </View>
+        <Text style={styles.note}>{volumeNote(volumesField)}</Text>
       </View>
       <View style={styles.progressBlock}>
         <View style={styles.track}>
@@ -419,8 +422,8 @@ const styles = StyleSheet.create({
   },
   chaptersTitleRow: { paddingHorizontal: 20, gap: 4 },
   chaptersTitle: { fontSize: 18, fontWeight: "600" },
-  chaptersNoteRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
-  note: { fontSize: 12, color: colors.mutedForeground, flex: 1 },
+  chaptersTitleLine: { flexDirection: "row", alignItems: "center", gap: 12, flexWrap: "wrap" },
+  note: { fontSize: 12, color: colors.mutedForeground },
   progressBlock: { paddingHorizontal: 20, paddingTop: 12 },
   track: { height: 6, borderRadius: radius.full, backgroundColor: colors.secondary, overflow: "hidden" },
   fill: { height: 6, backgroundColor: colors.primary },

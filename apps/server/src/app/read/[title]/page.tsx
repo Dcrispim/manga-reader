@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowDownWideNarrow, ArrowLeft, ArrowRight, ArrowUpNarrowWide } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { normalizeCategory } from "@/utils/categories";
 import { getChapters, getHistory } from "@/utils/history";
@@ -43,6 +43,8 @@ const FACT_LABELS: Array<[keyof Pick<Metadata, "type" | "status" | "demographic"
 ];
 
 type Volume = { label: string; chapters: string[] };
+
+const ORDER_KEY = "chapterOrder";
 
 // Mirrors the "same rules, two shapes" behavior chosen for the metadata's
 // `volumes` field: a bare count ("17") splits the chapter-number range into
@@ -111,6 +113,17 @@ const TitlePage = () => {
   const [activeVolume, setActiveVolume] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
   const [thumbOverrideUrl, setThumbOverrideUrl] = useState<string | null>(null);
+  // Chapter list order, remembered per browser (newest first by default).
+  const [ascending, setAscending] = useState(false);
+  useEffect(() => {
+    setAscending(localStorage.getItem(ORDER_KEY) === "asc");
+  }, []);
+  function toggleOrder() {
+    setAscending((asc) => {
+      localStorage.setItem(ORDER_KEY, asc ? "desc" : "asc");
+      return !asc;
+    });
+  }
 
   useEffect(() => {
     if (!title) return;
@@ -194,7 +207,9 @@ const TitlePage = () => {
   const genres = metadata.categories.map(normalizeCategory);
   const facts = FACT_LABELS.filter(([key]) => metadata[key]);
   const activeVol = volumes[activeVolume];
-  const orderedRows = activeVol ? [...activeVol.chapters].sort((a, b) => parseFloat(b) - parseFloat(a)) : [];
+  const orderedRows = activeVol
+    ? [...activeVol.chapters].sort((a, b) => (ascending ? 1 : -1) * (parseFloat(a) - parseFloat(b)))
+    : [];
   const progressPct = chapters.length ? Math.round((readCount / chapters.length) * 100) : 0;
 
   const modeNote = !metadata.volumes
@@ -363,7 +378,18 @@ const TitlePage = () => {
 
           <section className="rounded-2xl bg-card border border-border overflow-hidden flex flex-col">
             <div className="p-5 pb-0 flex items-start justify-between gap-4 flex-wrap">
-              <h2 className="text-lg font-semibold">Capítulos</h2>
+              <div className="flex items-center gap-3">
+                <h2 className="text-lg font-semibold">Capítulos</h2>
+                <button
+                  onClick={toggleOrder}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                  aria-label="Inverter a ordem dos capítulos"
+                  title="Inverter a ordem dos capítulos"
+                >
+                  {ascending ? <ArrowUpNarrowWide className="w-3.5 h-3.5" /> : <ArrowDownWideNarrow className="w-3.5 h-3.5" />}
+                  {ascending ? "Mais antigos primeiro" : "Mais recentes primeiro"}
+                </button>
+              </div>
               <p className="text-xs text-muted-foreground text-right max-w-[38ch]">{modeNote}</p>
             </div>
 
