@@ -16,9 +16,10 @@ import { Text } from '../ui/Text';
 import { colors } from '../ui/theme';
 
 // Displayed pull (after the rubber curve) that triggers the next chapter, and
-// the most the content can be pulled.
-const THRESHOLD = 110;
-const MAX_PULL = 200;
+// the most the content can be pulled. With these, the finger has to travel
+// about 320 dp past the end of the list, so a casual swipe never triggers.
+const THRESHOLD = 190;
+const MAX_PULL = 280;
 
 /**
  * Pull-up-to-continue at the end of a chapter: once the list is at its end,

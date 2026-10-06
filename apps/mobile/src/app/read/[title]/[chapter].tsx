@@ -221,21 +221,16 @@ export default function ReaderScreen() {
               />
             )}
             ListFooterComponent={
-              // The web's end strip: tap it, or keep pulling up, for the next chapter.
-              <View style={{ paddingBottom: insets.bottom + 72 }}>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={next ? `Fim. Ir para o capítulo ${next}` : "Fim"}
-                  disabled={!next}
-                  onPress={goNext}
-                  style={styles.endStrip}
-                >
-                  <Text style={styles.endText}>FIM</Text>
-                  <Text style={styles.endHint}>
-                    {next ? `Toque ou puxe para cima para o capítulo ${next}` : "Último capítulo disponível"}
-                  </Text>
-                </Pressable>
-              </View>
+              // The web's end strip: one thin line; tap it, or keep pulling up, for the next chapter.
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={next ? `Fim. Ir para o capítulo ${next}` : "Fim"}
+                disabled={!next}
+                onPress={goNext}
+                style={[styles.endStrip, { marginBottom: insets.bottom }]}
+              >
+                <Text style={styles.endText}>FIM</Text>
+              </Pressable>
             }
           />
           </PullToNextArea>
@@ -291,17 +286,8 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.85)",
   },
   headerTitle: { flex: 1, fontSize: 17, fontWeight: "600" },
-  endStrip: {
-    alignItems: "center",
-    gap: 4,
-    paddingVertical: 18,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.card,
-  },
-  endText: { fontSize: 15, fontWeight: "700", letterSpacing: 4 },
-  endHint: { fontSize: 12, color: colors.mutedForeground },
+  endStrip: { alignItems: "center", paddingVertical: 6 },
+  endText: { fontSize: 12, fontWeight: "600", letterSpacing: 2, color: colors.mutedForeground },
   bar: {
     position: "absolute",
     flexDirection: "row",
