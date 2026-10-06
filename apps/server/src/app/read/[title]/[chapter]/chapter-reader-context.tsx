@@ -2,7 +2,6 @@
 
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { saveToHistory } from '@/utils/history'
 import { getChapterRecord } from '@/utils/offline/store'
 import { isOffline } from '@/utils/offline/navigation'
 import { getNextChapter, getPreviousChapter } from '@/utils/utils.server'
@@ -18,6 +17,8 @@ type ChapterReaderContextValue = {
   display: ChapterDisplay
   nextChapter: string | null
   prevChapter: string | null
+  /** Chapters after the current one, in reading order (downloads ahead). */
+  upcomingChapters: string[]
   // Switches chapters. Online, this is a real navigation (unchanged
   // app behavior). Offline, a Next.js client transition would just fail
   // silently — it's a fetch for RSC data under the hood — so this instead
@@ -112,7 +113,7 @@ export default function ChapterReaderProvider({
     }
 
     window.history.pushState(null, '', href)
-    saveToHistory(title, chapter)
+    // History is recorded by the reader after HISTORY_MIN_OPEN_MS, not here.
     setCurrentChapter(chapter)
     loadChapterFromIndexedDb(chapter)
   }
@@ -125,6 +126,9 @@ export default function ChapterReaderProvider({
         display,
         nextChapter: nextChapterNum === '' ? null : nextChapterNum.toString(),
         prevChapter: prevChapterNum === '' ? null : prevChapterNum.toString(),
+        upcomingChapters: allChapters
+          .filter((c) => parseFloat(c) > parseFloat(currentChapter))
+          .sort((a, b) => parseFloat(a) - parseFloat(b)),
         goToChapter,
       }}
     >

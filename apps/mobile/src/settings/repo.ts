@@ -12,7 +12,8 @@ export const DEFAULTS = {
   'space.maxBytes': String(DEFAULT_LIMITS.maxBytes),
   'space.minFreeBytes': String(DEFAULT_LIMITS.minFreeBytes),
   'space.transientMaxBytes': String(DEFAULT_LIMITS.transientMaxBytes),
-  'downloads.autoNext': 'false',
+  'downloads.ahead': '1',
+  'reader.pullNext': 'true',
   'downloads.highRes': 'false',
 } as const;
 

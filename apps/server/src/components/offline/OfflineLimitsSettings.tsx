@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
+import OfflineAutoDownloadSwitch from '@/components/offline/OfflineAutoDownloadSwitch'
 import {
   DEFAULT_MAX_GLOBAL,
   DEFAULT_MAX_PER_TITLE,
@@ -66,6 +67,7 @@ export default function OfflineLimitsSettings() {
           />
         </div>
       </div>
+      <OfflineAutoDownloadSwitch />
       <div className="flex items-center justify-between gap-3">
         <Label htmlFor="download-high-res" className="text-xs text-muted-foreground text-left">
           Baixar em alta resolução quando disponível

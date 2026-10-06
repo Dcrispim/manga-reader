@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import type { Db } from '../db/types';
 import { recordOpen } from '../history/repo';
-import { enqueue, isAutoNext } from '../jobs/repo';
+import { downloadAhead, enqueue } from '../jobs/repo';
 import { requestDrain } from '../jobs/drain';
 import type { FileStore } from '../storage/files';
 import { fetchToTransient } from '../storage/transient';
@@ -27,8 +27,8 @@ export interface UseChapterInput {
   files: FileStore;
   title: string;
   chapter: string;
-  /** Next chapter in the title's list, or null; queued when downloads.autoNext is on. */
-  next: string | null;
+  /** Chapters after this one, in reading order; the first `downloads.ahead` get queued. */
+  upcoming: string[];
   online: boolean;
   /** How long the chapter must stay open before it enters history (tests shorten it). */
   historyDelayMs?: number;
@@ -49,7 +49,8 @@ export function imagePathOf(uri: string): string {
  * while they are shown. Never throws and never surfaces errors.
  */
 export function useChapter(input: UseChapterInput) {
-  const { db, client, files, title, chapter, next, online } = input;
+  const { db, client, files, title, chapter, upcoming, online } = input;
+  const upcomingKey = upcoming.join(',');
   const historyDelayMs = input.historyDelayMs ?? HISTORY_MIN_OPEN_MS;
   const [wanted, setWanted] = useState<Quality>('original');
   const [state, setState] = useState<ChapterState>({ status: 'loading' });
@@ -86,11 +87,10 @@ export function useChapter(input: UseChapterInput) {
 
   useEffect(() => {
     if (!ready) return;
-    if (next && isAutoNext(db)) {
-      enqueue(db, 'download', title, next);
-      requestDrain();
-    }
-  }, [db, title, chapter, next, ready]);
+    const ahead = upcomingKey ? upcomingKey.split(',').slice(0, downloadAhead(db)) : [];
+    for (const c of ahead) enqueue(db, 'download', title, c);
+    if (ahead.length) requestDrain();
+  }, [db, title, chapter, upcomingKey, ready]);
 
   useEffect(() => {
     let cancelled = false;

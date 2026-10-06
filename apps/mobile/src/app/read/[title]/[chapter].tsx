@@ -28,6 +28,7 @@ import { nextChapter } from "../../../reader/nextChapter";
 import { useChapter } from "../../../reader/useChapter";
 import { useServerStatus } from "../../../server/useServerStatus";
 import { expoFileStore } from "../../../storage/files";
+import { getSetting } from "../../../settings/repo";
 import { IconButton } from "../../../ui/Button";
 import { ServerStatusPill } from "../../../ui/ServerStatusPill";
 import { displayName } from "../../../ui/displayName";
@@ -56,6 +57,10 @@ export default function ReaderScreen() {
     [sources, dls],
   );
   const { next, skipped } = useMemo(() => nextChapter(chapters, chapter), [chapters, chapter]);
+  const upcoming = useMemo(() => {
+    const cur = parseFloat(chapter);
+    return chapters.filter((c) => parseFloat(c) > cur);
+  }, [chapters, chapter]);
   const prev = useMemo(() => {
     const cur = parseFloat(chapter);
     const before = chapters.filter((c) => parseFloat(c) < cur);
@@ -75,7 +80,7 @@ export default function ReaderScreen() {
     files: expoFileStore,
     title,
     chapter,
-    next,
+    upcoming,
     online,
   });
 
@@ -119,7 +124,9 @@ export default function ReaderScreen() {
     else if (dy < -6) setChromeVisible(true);
   };
   const headerHeight = insets.top + 56;
-  const pullNext = usePullToNext({ next, onNext: goNext });
+  // "Puxar para o próximo capítulo" can be turned off in Settings.
+  const [pullEnabled] = useState(() => getSetting(db, 'reader.pullNext') !== 'false');
+  const pullNext = usePullToNext({ next, onNext: goNext, enabled: pullEnabled });
   const showBar = xlAvailable && online;
 
   const header = (
@@ -144,14 +151,27 @@ export default function ReaderScreen() {
 
   const menu = (
     <>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Abrir menu"
-        onPress={() => setMenuOpen(true)}
-        style={[styles.fab, { bottom: insets.bottom + 16 }]}
+      {/* The menu button hides with the header while scrolling down. */}
+      <Animated.View
+        pointerEvents={chromeVisible ? "auto" : "none"}
+        style={[
+          styles.fab,
+          {
+            bottom: insets.bottom + 16,
+            opacity: chrome,
+            transform: [{ translateY: chrome.interpolate({ inputRange: [0, 1], outputRange: [90, 0] }) }],
+          },
+        ]}
       >
-        <Feather name="menu" size={20} color={colors.foreground} />
-      </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Abrir menu"
+          onPress={() => setMenuOpen(true)}
+          style={styles.fabButton}
+        >
+          <Feather name="menu" size={20} color={colors.foreground} />
+        </Pressable>
+      </Animated.View>
       <ReaderMenu
         open={menuOpen}
         onClose={() => setMenuOpen(false)}
@@ -312,7 +332,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.background,
-    alignItems: "center",
-    justifyContent: "center",
   },
+  fabButton: { flex: 1, alignItems: "center", justifyContent: "center" },
 });

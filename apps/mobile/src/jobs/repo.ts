@@ -151,7 +151,16 @@ export function recoverInterrupted(db: Db): number {
   }
 }
 
-/** `downloads.autoNext` (default false): opening chapter N queues N+1 (wired in M4-15). */
-export function isAutoNext(db: Db): boolean {
-  return getSetting(db, 'downloads.autoNext') === 'true';
+export const MAX_DOWNLOAD_AHEAD = 10;
+
+/**
+ * `downloads.ahead` (default 1, 0 = off): opening chapter N queues the next
+ * that many chapters. Same setting and default as the web. Before it there
+ * was an on/off `downloads.autoNext`; an explicit "off" there stays off.
+ */
+export function downloadAhead(db: Db): number {
+  const raw = getSetting(db, 'downloads.ahead');
+  if (raw === null) return getSetting(db, 'downloads.autoNext') === 'false' ? 0 : 1;
+  const n = parseInt(raw, 10);
+  return Number.isFinite(n) ? Math.min(MAX_DOWNLOAD_AHEAD, Math.max(0, n)) : 1;
 }

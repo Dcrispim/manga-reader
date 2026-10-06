@@ -66,8 +66,8 @@ function Toggle({ label, settingKey }: { label: string; settingKey: string }) {
       <Switch
         accessibilityLabel={label}
         value={on}
-        trackColor={{ false: colors.secondary, true: colors.primary }}
-        thumbColor={on ? colors.primaryForeground : colors.mutedForeground}
+        trackColor={{ false: colors.secondary, true: 'rgba(229,229,229,0.45)' }}
+        thumbColor={on ? colors.primary : colors.mutedForeground}
         onValueChange={(v) => {
           setOn(v);
           setSetting(db, settingKey, v ? 'true' : 'false');
@@ -167,7 +167,6 @@ export default function StorageScreen() {
       </Section>
 
       <Section title="Downloads">
-        <Toggle label="Baixar o próximo capítulo automaticamente" settingKey="downloads.autoNext" />
         <Toggle label="Baixar em alta resolução" settingKey="downloads.highRes" />
       </Section>
 

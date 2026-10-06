@@ -37,7 +37,7 @@ export default function ConfigSection({
         <Connect />
         {showDeform && <ImageDeformSettings />}
         {showUpscale && <UpscaleSettings />}
-        {showDeform && <OfflineAutoDownloadSwitch />}
+        {showDeform && <OfflineAutoDownloadSwitch compact />}
       </CollapsibleContent>
     </Collapsible>
   )

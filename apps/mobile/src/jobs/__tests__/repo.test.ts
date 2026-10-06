@@ -1,8 +1,10 @@
 import { createTestDb } from '../../db/testDb';
 import { jobs } from '../../db/schema';
+import { setSetting } from '../../settings/repo';
 import {
   backoffMs,
   cancel,
+  downloadAhead,
   enqueue,
   listActive,
   markDone,
@@ -75,5 +77,20 @@ describe('jobs repo', () => {
     const rows = all(db);
     expect(rows.find((j) => j.id === a.id)!.state).toBe('queued');
     expect(rows.find((j) => j.id === b.id)!.state).toBe('done');
+  });
+});
+
+describe('downloadAhead', () => {
+  it('defaults to 1, honours the setting within 0..10 and an old explicit off', () => {
+    const db = createTestDb();
+    expect(downloadAhead(db)).toBe(1);
+    setSetting(db, 'downloads.autoNext', 'false');
+    expect(downloadAhead(db)).toBe(0);
+    setSetting(db, 'downloads.ahead', '3');
+    expect(downloadAhead(db)).toBe(3);
+    setSetting(db, 'downloads.ahead', '99');
+    expect(downloadAhead(db)).toBe(10);
+    setSetting(db, 'downloads.ahead', '-2');
+    expect(downloadAhead(db)).toBe(0);
   });
 });

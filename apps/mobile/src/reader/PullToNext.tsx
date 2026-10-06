@@ -27,7 +27,16 @@ const MAX_PULL = 280;
  * where it leads; letting go past the threshold opens the next chapter,
  * otherwise it springs back. The list keeps its native scroll throughout.
  */
-export function usePullToNext({ next, onNext }: { next: string | null; onNext: () => void }) {
+export function usePullToNext({
+  next,
+  onNext,
+  enabled = true,
+}: {
+  next: string | null;
+  onNext: () => void;
+  /** Off in Settings: no gesture at all, the list just ends at the strip. */
+  enabled?: boolean;
+}) {
   const atEnd = useSharedValue(false);
   const pull = useSharedValue(0);
   // translationY when the drag reached the end of the list (the part of a
@@ -41,6 +50,7 @@ export function usePullToNext({ next, onNext }: { next: string | null; onNext: (
   const [panRef] = useState<MutableRefObject<GestureType | undefined>>(() => ({ current: undefined }));
 
   const pan = Gesture.Pan()
+    .enabled(enabled)
     .withRef(panRef)
     .activeOffsetY(-6)
     .failOffsetX([-24, 24])

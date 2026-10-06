@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import { Link, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
 
 import { db } from '../../db/client';
 import { DEFAULTS, getSetting, setSetting } from '../../settings/repo';
@@ -9,6 +9,7 @@ import { testAddress } from '../../server/status';
 import { refreshServer, useServerStatus } from '../../server/useServerStatus';
 import { ServerStatusPill } from '../../ui/ServerStatusPill';
 import { useCatalog } from '../../catalog/hooks';
+import { downloadAhead, MAX_DOWNLOAD_AHEAD } from '../../jobs/repo';
 import { settings } from '../../db/schema';
 import { useLiveQuery } from '../../db/liveQuery';
 import { formatRelative } from '../../settings/format';
@@ -299,6 +300,40 @@ export default function SettingsScreen() {
         </View>
       </Card>
 
+      <Card style={styles.card}>
+        <Label>Leitura</Label>
+        <View style={styles.optionRow}>
+          <View style={styles.optionText}>
+            <Text>Puxar para o próximo capítulo</Text>
+            <Text style={common.muted}>No fim do capítulo, puxar para cima abre o próximo.</Text>
+          </View>
+          <Switch
+            accessibilityLabel="Puxar para o próximo capítulo"
+            value={getSetting(db, 'reader.pullNext') !== 'false'}
+            trackColor={{ false: colors.secondary, true: 'rgba(229,229,229,0.45)' }}
+            thumbColor={getSetting(db, 'reader.pullNext') !== 'false' ? colors.primary : colors.mutedForeground}
+            onValueChange={(v) => setSetting(db, 'reader.pullNext', v ? 'true' : 'false')}
+          />
+        </View>
+        <View style={styles.optionRow}>
+          <View style={styles.optionText}>
+            <Text>Capítulos à frente para baixar</Text>
+            <Text style={common.muted}>{`Baixados ao abrir um capítulo (0 desliga, até ${MAX_DOWNLOAD_AHEAD}).`}</Text>
+          </View>
+          <TextInput
+            style={[common.input, styles.aheadInput]}
+            defaultValue={String(downloadAhead(db))}
+            keyboardType="numeric"
+            maxLength={2}
+            accessibilityLabel="Capítulos à frente para baixar"
+            onEndEditing={(e) => {
+              const n = Math.min(MAX_DOWNLOAD_AHEAD, Math.max(0, parseInt(e.nativeEvent.text, 10) || 0));
+              setSetting(db, 'downloads.ahead', String(n));
+            }}
+          />
+        </View>
+      </Card>
+
       <Card style={styles.list}>
         {LINKS.map((l, i) => (
           <Link key={l.href} href={l.href} asChild>
@@ -349,6 +384,9 @@ const styles = StyleSheet.create({
   statusLine: { flexDirection: 'row', gap: 12 },
   statusLabel: { width: 130, fontSize: 13, color: colors.mutedForeground },
   statusValue: { flex: 1, fontSize: 13 },
+  optionRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  optionText: { flex: 1, gap: 2 },
+  aheadInput: { width: 72, textAlign: 'center' },
   headRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   banner: {
     padding: 12,

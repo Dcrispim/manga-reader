@@ -5,7 +5,7 @@ import { WifiOff } from 'lucide-react'
 import ZoomHandler from '@/components/ZoomHandler'
 import HandleKeyboardNavigation from './handle-keyboard'
 import { useChapterReader } from './chapter-reader-context'
-import { getAutoDownloadNext } from '@/utils/offline/config'
+import { getDownloadAhead } from '@/utils/offline/config'
 import { isChapterSaved } from '@/utils/offline/store'
 import { downloadChapterImages } from '@/utils/offline/downloader'
 
@@ -32,7 +32,7 @@ export default function ReadChapterClient({
   title: string
   isOriginal: boolean
 }) {
-  const { currentChapter, prevChapter, nextChapter, display } = useChapterReader()
+  const { currentChapter, prevChapter, upcomingChapters, display } = useChapterReader()
 
   const [zoom, setZoom] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -45,20 +45,26 @@ export default function ReadChapterClient({
     localStorage.setItem('config.zoom', zoom.toString())
   }, [zoom])
 
+  // Saves the next N chapters for offline reading (N = "capítulos à frente").
+  const aheadKey = upcomingChapters.join(',')
   useEffect(() => {
-    if (!nextChapter || currentChapter === '@local') return
-    if (!getAutoDownloadNext()) return
+    if (currentChapter === '@local') return
+    const ahead = upcomingChapters.slice(0, getDownloadAhead())
+    if (ahead.length === 0) return
     if (typeof navigator !== 'undefined' && !navigator.onLine) return
-
     let cancelled = false
-    isChapterSaved(title, nextChapter).then((saved) => {
-      if (saved || cancelled) return
-      downloadChapterImages(title, nextChapter).catch(() => {})
-    })
+    void (async () => {
+      for (const chapter of ahead) {
+        if (cancelled) return
+        if (await isChapterSaved(title, chapter)) continue
+        await downloadChapterImages(title, chapter).catch(() => {})
+      }
+    })()
     return () => {
       cancelled = true
     }
-  }, [title, nextChapter, currentChapter])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- aheadKey stands for upcomingChapters
+  }, [title, aheadKey, currentChapter])
 
   return (
     <>
