@@ -115,7 +115,7 @@ describe('health endpoint', () => {
     }
   })
 
-  it('includes version 1.3.0', async () => {
+  it('includes version 1.3.1', async () => {
     const route = await import('@/app/api/health/route')
     const res = await route.GET()
     const body = await res.json()
