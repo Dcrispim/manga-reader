@@ -26,6 +26,7 @@ import { UnavailableChapter } from "../../../reader/UnavailableChapter";
 import { ZoomableList } from "../../../reader/ZoomableList";
 import { nextChapter } from "../../../reader/nextChapter";
 import { useChapter } from "../../../reader/useChapter";
+import { useConfirmLeave } from "../../../reader/useConfirmLeave";
 import { useScrollSnaps } from "../../../reader/useScrollSnaps";
 import { useServerStatus } from "../../../server/useServerStatus";
 import { expoFileStore } from "../../../storage/files";
@@ -41,6 +42,7 @@ const client = createClient({ db });
 export default function ReaderScreen() {
   const { title, chapter } = useLocalSearchParams<{ title: string; chapter: string }>();
   const router = useRouter();
+  const leave = useConfirmLeave();
   const { status } = useServerStatus();
   const online = status === "online";
 
@@ -97,7 +99,7 @@ export default function ReaderScreen() {
   const job = (jobRows ?? []).find((j) => j.kind === "download" && j.chapter === chapter) ?? null;
 
   const goTo = (target: string) =>
-    router.replace({ pathname: "/read/[title]/[chapter]", params: { title, chapter: target } });
+    leave(() => router.replace({ pathname: "/read/[title]/[chapter]", params: { title, chapter: target } }));
 
   const goNext = () => {
     if (!next) return;
@@ -144,7 +146,7 @@ export default function ReaderScreen() {
           },
         ]}
       >
-        <IconButton icon="arrow-left" label="Voltar" color={colors.foreground} size={22} onPress={() => router.back()} />
+        <IconButton icon="arrow-left" label="Voltar" color={colors.foreground} size={22} onPress={() => leave(() => router.back())} />
         <Text style={styles.headerTitle} numberOfLines={1}>{`${displayName(title)} · Cap. ${chapter}`}</Text>
         <ServerStatusPill status={status} />
       </Animated.View>
@@ -187,8 +189,8 @@ export default function ReaderScreen() {
         xlAvailable={showBar}
         onQuality={setQuality}
         onChapter={goTo}
-        onTitle={() => router.dismissTo({ pathname: "/title/[name]", params: { name: title } })}
-        onHome={() => router.dismissTo("/")}
+        onTitle={() => leave(() => router.dismissTo({ pathname: "/title/[name]", params: { name: title } }))}
+        onHome={() => leave(() => router.dismissTo("/"))}
       />
     </>
   );
@@ -201,7 +203,7 @@ export default function ReaderScreen() {
           <UnavailableChapter
             job={job}
             onDownload={() => enqueueAndDrain(db, "download", title, chapter)}
-            onBack={() => router.back()}
+            onBack={() => leave(() => router.back())}
           />
         </View>
         {menu}
