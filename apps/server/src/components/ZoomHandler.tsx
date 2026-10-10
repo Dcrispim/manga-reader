@@ -5,6 +5,7 @@ import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import ImageGallery from './ImageGallery';
+import { useScrollSnaps } from '@/hooks/useScrollSnaps';
 
 // Below this scrollTop the bar always shows, regardless of direction — so it
 // doesn't hide right at the top of the chapter after a tiny downward nudge.
@@ -45,6 +46,8 @@ export default function ZoomHandler({
 
   const [toolbarVisible, setToolbarVisible] = useState(true)
   const lastScrollTop = useRef(0)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  useScrollSnaps(scrollRef, title, currentChapter)
 
   const handleScroll = (event: UIEvent<HTMLDivElement>) => {
     const scrollTop = event.currentTarget.scrollTop
@@ -118,6 +121,7 @@ export default function ZoomHandler({
         )}
       </div>
       <div
+        ref={scrollRef}
         className="h-screen overflow-y-scroll w-full justify-center scroll-m-0 zoom"
         onScroll={handleScroll}
       >
