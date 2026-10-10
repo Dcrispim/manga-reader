@@ -10,3 +10,4 @@ export * from "./library/scan";
 export * from "./library/memoryFs";
 export * from "./abort";
 export * from "./space/policy";
+export * from "./reader/snaps";
