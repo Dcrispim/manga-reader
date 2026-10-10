@@ -26,6 +26,7 @@ import { UnavailableChapter } from "../../../reader/UnavailableChapter";
 import { ZoomableList } from "../../../reader/ZoomableList";
 import { nextChapter } from "../../../reader/nextChapter";
 import { useChapter } from "../../../reader/useChapter";
+import { useScrollSnaps } from "../../../reader/useScrollSnaps";
 import { useServerStatus } from "../../../server/useServerStatus";
 import { expoFileStore } from "../../../storage/files";
 import { getSetting } from "../../../settings/repo";
@@ -128,6 +129,7 @@ export default function ReaderScreen() {
   const [pullEnabled] = useState(() => getSetting(db, 'reader.pullNext') !== 'false');
   const pullNext = usePullToNext({ next, onNext: goNext, enabled: pullEnabled });
   const showBar = xlAvailable && online;
+  const snaps = useScrollSnaps({ db, title, chapter });
 
   const header = (
     <>
@@ -227,6 +229,7 @@ export default function ReaderScreen() {
             onScroll={(e) => {
               onScroll(e);
               pullNext.onScroll(e);
+              snaps.onScroll(e);
             }}
             scrollEventThrottle={16}
             contentContainerStyle={{ paddingTop: headerHeight }}
