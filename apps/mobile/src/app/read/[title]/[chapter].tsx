@@ -129,7 +129,7 @@ export default function ReaderScreen() {
   const [pullEnabled] = useState(() => getSetting(db, 'reader.pullNext') !== 'false');
   const pullNext = usePullToNext({ next, onNext: goNext, enabled: pullEnabled });
   const showBar = xlAvailable && online;
-  const snaps = useScrollSnaps({ db, title, chapter });
+  const { ref: snapsRef, ...snaps } = useScrollSnaps({ db, title, chapter });
 
   const header = (
     <>
@@ -219,6 +219,7 @@ export default function ReaderScreen() {
         <ZoomableList>
           <PullToNextArea pan={pullNext.pan} contentStyle={pullNext.contentStyle}>
           <GHFlatList
+            ref={snapsRef}
             simultaneousHandlers={pullNext.panRef}
             data={state.pages}
             keyExtractor={(p) => `${quality}-${p.index}`}
@@ -231,6 +232,8 @@ export default function ReaderScreen() {
               pullNext.onScroll(e);
               snaps.onScroll(e);
             }}
+            onContentSizeChange={snaps.onContentSizeChange}
+            onScrollBeginDrag={snaps.onScrollBeginDrag}
             scrollEventThrottle={16}
             contentContainerStyle={{ paddingTop: headerHeight }}
             renderItem={({ item }) => (
