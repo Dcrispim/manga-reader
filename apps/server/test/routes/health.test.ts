@@ -115,11 +115,11 @@ describe('health endpoint', () => {
     }
   })
 
-  it('includes version 1.3.1', async () => {
+  it('includes version 1.3.2', async () => {
     const route = await import('@/app/api/health/route')
     const res = await route.GET()
     const body = await res.json()
-    expect(body.version).toBe('1.3.1')
+    expect(body.version).toBe('1.3.2')
   })
 
   it('advertises the catalog feature', async () => {
