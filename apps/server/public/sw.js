@@ -2,12 +2,12 @@
 // invented offline-only UI). It does three things:
 // 1. Cache-first the immutable Next.js static build assets so the app shell
 //    boots offline.
-// 2. Cache-first actual manga image bytes (covers, pages, upscaled pages) —
+// 2. Cache-first actual manga image bytes (pages, upscaled pages) —
 //    these are effectively write-once per URL, so once shown they stay
 //    available even if the network/server later can't be reached. This is
 //    separate from (and complements) the explicit, user-managed IndexedDB
 //    chapter downloads: this cache is opportunistic and covers anything
-//    merely viewed, like thumbnails.
+//    merely viewed. Covers are the exception (see THUMB_PATH_RE).
 // 3. Network-first everything else (pages, list/metadata/search JSON APIs),
 //    falling back to whatever was last cached for that exact URL when the
 //    network is unreachable. A chapter page you've already opened while
@@ -31,7 +31,7 @@
 // the served chapter doesn't match the URL and swaps in the correct one
 // from IndexedDB, the same way it does for in-app navigation.
 
-const CACHE_VERSION = 'v5'
+const CACHE_VERSION = 'v6'
 const STATIC_CACHE = `manga-static-${CACHE_VERSION}`
 const RUNTIME_CACHE = `manga-runtime-${CACHE_VERSION}`
 const IMAGE_CACHE = `manga-images-${CACHE_VERSION}`
@@ -42,7 +42,14 @@ const PRECACHE_URLS = ['/manifest.json']
 // and /api/read/<title>/<chapter>/xl list
 // endpoints (and /api/metadata, /api/list, /api/search), which reflect the
 // library's live state and must stay network-first.
-const IMAGE_PATH_RE = /^\/api\/read\/[^/]+\/[^/]+\/(thumb|xl\/\d+(\/\d+)?|\d+)$/
+const IMAGE_PATH_RE = /^\/api\/read\/[^/]+\/[^/]+\/(xl\/\d+(\/\d+)?|\d+)$/
+
+// The cover is NOT write-once: the same URL serves the chapter's first page
+// until a curated .thumb/<title>.jpg exists, and the editor can replace that
+// file later. Cache-first would pin whichever version was seen first (and
+// only a hard reload, which bypasses the worker, showed the real one), so
+// covers go network-first and use the cache only when offline.
+const THUMB_PATH_RE = /^\/api\/read\/[^/]+\/[^/]+\/thumb$/
 
 self.addEventListener('install', (event) => {
   self.skipWaiting()
@@ -137,6 +144,11 @@ self.addEventListener('fetch', (event) => {
 
   if (isStaticAsset(url.pathname)) {
     event.respondWith(cacheFirst(request, STATIC_CACHE))
+    return
+  }
+
+  if (THUMB_PATH_RE.test(url.pathname)) {
+    event.respondWith(networkFirst(request, IMAGE_CACHE))
     return
   }
 
