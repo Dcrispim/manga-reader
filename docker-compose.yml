@@ -14,6 +14,8 @@ services:
       UPSCALE_WORKER_TOKEN: ${UPSCALE_WORKER_TOKEN}
       # manga-stats (status tab refresh) also runs on the host, via the same worker.
       STATS_WORKER_URL: http://host.docker.internal:4993/stats
+      # ...and so does manga-download ("Obter capítulos" on the status tab).
+      DOWNLOAD_WORKER_URL: http://host.docker.internal:4993/download
     extra_hosts:
       - "host.docker.internal:host-gateway"
     # host.docker.internal always resolves to the default bridge's gateway

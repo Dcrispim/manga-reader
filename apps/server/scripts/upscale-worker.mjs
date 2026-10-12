@@ -19,6 +19,7 @@
 //                         "Authorization: Bearer <token>".
 //   MANGA_UP_BIN          default ~/cmd/manga-up
 //   MANGA_STATS_BIN       default ~/cmd/manga-stats
+//   MANGA_DOWNLOAD_BIN    default ~/cmd/manga-download
 
 import { createServer } from 'node:http'
 import { spawn } from 'node:child_process'
@@ -29,6 +30,7 @@ const PORT = Number(process.env.UPSCALE_WORKER_PORT || 4993)
 const TOKEN = process.env.UPSCALE_WORKER_TOKEN
 const MANGA_UP_BIN = process.env.MANGA_UP_BIN || path.join(os.homedir(), 'cmd', 'manga-up')
 const MANGA_STATS_BIN = process.env.MANGA_STATS_BIN || path.join(os.homedir(), 'cmd', 'manga-stats')
+const MANGA_DOWNLOAD_BIN = process.env.MANGA_DOWNLOAD_BIN || path.join(os.homedir(), 'cmd', 'manga-download')
 
 if (!TOKEN) {
   console.error('UPSCALE_WORKER_TOKEN must be set — refusing to start an unauthenticated worker.')
@@ -78,8 +80,48 @@ function runStats(title) {
   })
 }
 
+// Same shape the app builds (titleDownload.ts downloadArgs): the template URL,
+// an optional start/end pair, then --gaps/--update. Checked again here since
+// these become argv of a script on the host.
+const CHAPTER = /^\d+(\.\d+)?$/
+function isDownloadArgs(args) {
+  if (!Array.isArray(args) || !args.every((a) => typeof a === 'string')) return false
+  const [template, ...rest] = args
+  if (!/^https?:\/\/\S+$/.test(template ?? '') || !template.includes('{chapter}')) return false
+  const flags = rest.filter((a) => a.startsWith('--'))
+  const range = rest.filter((a) => !a.startsWith('--'))
+  return (
+    flags.every((f) => f === '--gaps' || f === '--update') &&
+    (range.length === 0 || (range.length === 2 && range.every((c) => CHAPTER.test(c)))) &&
+    rest.join(' ') === [...range, ...flags].join(' ')
+  )
+}
+
+const downloading = new Set()
+
+// Downloads run for a long time, so this resolves once the process started.
+function startDownload(title, args) {
+  return new Promise((resolve) => {
+    const child = spawn(MANGA_DOWNLOAD_BIN, [title, ...args], { stdio: ['ignore', 'inherit', 'inherit'] })
+    child.on('error', (err) => {
+      downloading.delete(title)
+      resolve({ ok: false, error: err.message })
+    })
+    child.on('spawn', () => {
+      downloading.add(title)
+      resolve({ ok: true })
+    })
+    child.on('exit', (code) => {
+      downloading.delete(title)
+      console.log(`[upscale-worker] download ${title} exited with code ${code}`)
+    })
+  })
+}
+
+const ROUTES = ['/upscale', '/stats', '/download']
+
 const server = createServer((req, res) => {
-  if (req.method !== 'POST' || (req.url !== '/upscale' && req.url !== '/stats')) {
+  if (req.method !== 'POST' || !ROUTES.includes(req.url)) {
     res.writeHead(404).end()
     return
   }
@@ -115,6 +157,24 @@ const server = createServer((req, res) => {
       return
     }
 
+    if (req.url === '/download') {
+      const { title, args } = payload
+      if (!isSafeSegment(title) || !isDownloadArgs(args)) {
+        res.writeHead(400).end('invalid title/args')
+        return
+      }
+      if (downloading.has(title)) {
+        res.writeHead(409, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ ok: false, error: 'Já há um download em andamento para este título' }))
+        return
+      }
+      console.log(`[upscale-worker] download ${title} ${args.join(' ')}`)
+      const result = await startDownload(title, args)
+      res.writeHead(result.ok ? 202 : 500, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify(result))
+      return
+    }
+
     const { title, chapterDir } = payload
     if (!isSafeSegment(title) || !isSafeSegment(chapterDir)) {
       res.writeHead(400).end('invalid title/chapterDir')
@@ -129,5 +189,5 @@ const server = createServer((req, res) => {
 })
 
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`[upscale-worker] listening on 0.0.0.0:${PORT}, MANGA_UP_BIN=${MANGA_UP_BIN}, MANGA_STATS_BIN=${MANGA_STATS_BIN}`)
+  console.log(`[upscale-worker] listening on 0.0.0.0:${PORT}, MANGA_UP_BIN=${MANGA_UP_BIN}, MANGA_STATS_BIN=${MANGA_STATS_BIN}, MANGA_DOWNLOAD_BIN=${MANGA_DOWNLOAD_BIN}`)
 })

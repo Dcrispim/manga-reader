@@ -2,8 +2,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { RefreshCw } from "lucide-react";
+import { Download, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import DownloadChaptersDialog from "./DownloadChaptersDialog";
 import { normalizeStats, type BelowItem, type Gap, type Group, type GroupItem, type Metric, type MetricView, type StatsReport } from "./statsReport";
 
 // Same palette as the standalone HTML report, so both read the same way.
@@ -398,6 +399,8 @@ export default function TitleStatusPanel({ title }: { title: string }) {
   const [error, setError] = useState<string | null>(null);
   const [metric, setMetric] = useState<Metric>("images");
   const [section, setSection] = useState<Section>("charts");
+  const [downloadOpen, setDownloadOpen] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -455,9 +458,26 @@ export default function TitleStatusPanel({ title }: { title: string }) {
             </p>
           )}
         </div>
-        {refreshButton}
+        <div className="flex flex-wrap gap-2">
+          {/* The plan (range after the last chapter, gaps) comes from the stats. */}
+          <button
+            type="button"
+            onClick={() => setDownloadOpen(true)}
+            disabled={!data}
+            title={data ? undefined : "Gere o status primeiro"}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold border border-border hover:bg-accent disabled:opacity-60 transition-colors"
+          >
+            <Download className="w-4 h-4" />
+            Obter capítulos
+          </button>
+          {refreshButton}
+        </div>
       </div>
 
+      {data && (
+        <DownloadChaptersDialog title={title} stats={data} open={downloadOpen} onOpenChange={setDownloadOpen} onStarted={setNotice} />
+      )}
+      {notice && <p className="text-sm text-muted-foreground">{notice}</p>}
       {error && <p className="text-sm text-destructive whitespace-pre-wrap break-words">{error}</p>}
 
       {data?.legacy && (
