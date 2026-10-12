@@ -95,6 +95,13 @@ describe('GET /api/read/[title]/[chapter]/[index]', () => {
     }
   })
 
+  it('"last" serves the final page in sorted order (10.jpg)', async () => {
+    const res = await r.page.GET(req(), ctx({ title: 'Alpha', chapter: '1', index: 'last' }))
+    expect(res.status).toBe(200)
+    const body = Buffer.from(await res.arrayBuffer())
+    expect(body.equals(await fs.readFile(path.join(lib.root, 'Alpha', '1', '10.jpg')))).toBe(true)
+  })
+
   it('returns 404 for a missing chapter and 400 for an out-of-range index', async () => {
     const miss = await r.page.GET(req(), ctx({ title: 'Alpha', chapter: '999', index: '0' }))
     expect(miss.status).toBe(404)

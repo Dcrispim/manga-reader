@@ -26,7 +26,9 @@ export async function GET(
 
     files = sortImageFiles(files);
 
-    const index = parseInt(indexPage, 10);
+    // "last" resolves to the chapter's final page (used by the status tab's
+    // hover preview, to tell a real ending from a truncated download).
+    const index = indexPage === "last" ? files.length - 1 : parseInt(indexPage, 10);
     if (isNaN(index) || index < 0 || index >= files.length) {
       return NextResponse.json({ error: "Página fora do limite" }, { status: 400 });
     }

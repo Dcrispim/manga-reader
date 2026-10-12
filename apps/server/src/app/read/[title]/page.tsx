@@ -10,6 +10,7 @@ import { getChapters, getHistory } from "@/utils/history";
 import OfflineChapterButton from "@/components/offline/OfflineChapterButton";
 import { offlineAwareLinkClick } from "@/utils/offline/navigation";
 import { cacheTitleInfo, getCachedTitleInfo } from "@/utils/offline/titleCache";
+import TitleStatusPanel from "@/components/title/TitleStatusPanel";
 
 type Metadata = {
   categories: string[];
@@ -45,6 +46,12 @@ const FACT_LABELS: Array<[keyof Pick<Metadata, "type" | "status" | "demographic"
 type Volume = { label: string; chapters: string[] };
 
 const ORDER_KEY = "chapterOrder";
+
+const PAGE_TABS = [
+  ["chapters", "Capítulos"],
+  ["status", "Status"],
+] as const;
+type PageTab = (typeof PAGE_TABS)[number][0];
 
 // Mirrors the "same rules, two shapes" behavior chosen for the metadata's
 // `volumes` field: a bare count ("17") splits the chapter-number range into
@@ -113,6 +120,15 @@ const TitlePage = () => {
   const [activeVolume, setActiveVolume] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
   const [thumbOverrideUrl, setThumbOverrideUrl] = useState<string | null>(null);
+  // "#status" in the URL opens straight on the status tab.
+  const [pageTab, setPageTab] = useState<PageTab>("chapters");
+  useEffect(() => {
+    if (window.location.hash === "#status") setPageTab("status");
+  }, []);
+  function selectPageTab(tab: PageTab) {
+    setPageTab(tab);
+    history.replaceState(null, "", tab === "status" ? "#status" : window.location.pathname + window.location.search);
+  }
   // Chapter list order, remembered per browser (newest first by default).
   const [ascending, setAscending] = useState(false);
   useEffect(() => {
@@ -197,6 +213,7 @@ const TitlePage = () => {
 
   function scrollToLedger(e: React.MouseEvent) {
     e.preventDefault();
+    setPageTab("chapters");
     document.getElementById("capitulos")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
@@ -331,8 +348,31 @@ const TitlePage = () => {
           </div>
         </section>
 
+        <div id="capitulos" role="tablist" aria-label="Seções do título" className="flex gap-1 mt-6 border-b border-border">
+          {PAGE_TABS.map(([key, label]) => (
+            <button
+              key={key}
+              role="tab"
+              aria-selected={pageTab === key}
+              onClick={() => selectPageTab(key)}
+              className={cn(
+                "px-4 pb-3 pt-2 text-sm font-medium border-b-2 -mb-px transition-colors",
+                pageTab === key ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {pageTab === "status" && (
+          <div className="mt-6">
+            <TitleStatusPanel title={title} />
+          </div>
+        )}
+
         {/* Body: preview rail + chapter ledger */}
-        <div id="capitulos" className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6 mt-6 items-stretch">
+        <div className={cn("grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6 mt-6 items-stretch", pageTab !== "chapters" && "hidden")}>
           <aside className="flex flex-col gap-4 p-4 rounded-2xl bg-card border border-border lg:sticky lg:top-6 lg:self-start h-full">
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Prévia</p>
             {selected ? (
