@@ -4,39 +4,7 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-// Shape of <title>_stats.json, written by manga-stats (stats_chart.py in
-// manga-downloader). Older files may lack `views`/`lastImage`; the panel
-// falls back to the top-level image-count fields then.
-type GroupItem = { chapterNumber: number; value: number; neighborMean: number; localThreshold: number };
-type Group = { start: number; endExclusive: number; items: GroupItem[] };
-type BelowItem = { chapterName: string; value: number };
-type Gap = { start: number; end: number; missingCount: number; withLinks: number[]; withoutLinksCount: number };
-type MetricView = {
-  unit: "img" | "px";
-  summary: { total: number; mean: number; std: number; globalThreshold: number };
-  groups: Group[];
-  belowThreshold: BelowItem[];
-  belowThresholdGlobal: BelowItem[];
-};
-type Metric = "images" | "height";
-type StatsReport = {
-  meta: { title: string; generatedAtIso: string; chaptersPerChart: number };
-  summary: {
-    chapterCount: number;
-    imageCountTotal: number;
-    mean: number;
-    std: number;
-    globalThreshold: number;
-    trimPercentEachTail?: number;
-    neighborWindow?: number;
-  };
-  groups: { start: number; endExclusive: number; items: { chapterNumber: number; imageCount: number; neighborMean: number; localThreshold: number }[] }[];
-  gaps: Gap[];
-  belowThreshold: { chapterName: string; imageCount: number }[];
-  belowThresholdGlobal: { chapterName: string; imageCount: number }[];
-  views?: Partial<Record<Metric, MetricView>>;
-};
+import { normalizeStats, type BelowItem, type Gap, type Group, type GroupItem, type Metric, type MetricView, type StatsReport } from "./statsReport";
 
 // Same palette as the standalone HTML report, so both read the same way.
 const COLORS = { accent: "#6366f1", danger: "#ef4444", ok: "#22c55e", warn: "#f97316", neighbor: "rgba(148,163,184,0.95)" };
@@ -57,6 +25,11 @@ function legacyImagesView(data: StatsReport): MetricView {
     belowThreshold: toBelow(data.belowThreshold),
     belowThresholdGlobal: toBelow(data.belowThresholdGlobal),
   };
+}
+
+function formatGeneratedAt(iso: string) {
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) ? "data desconhecida" : new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(date);
 }
 
 function formatValue(v: number, unit: MetricView["unit"]) {
@@ -430,7 +403,7 @@ export default function TitleStatusPanel({ title }: { title: string }) {
     setLoading(true);
     fetch(`/api/stats/${title}`)
       .then((res) => (res.ok ? res.json() : null))
-      .then((json) => setData(json))
+      .then((json) => setData(json ? normalizeStats(json) : null))
       .catch(() => setData(null))
       .finally(() => setLoading(false));
   }, [title]);
@@ -442,7 +415,7 @@ export default function TitleStatusPanel({ title }: { title: string }) {
       const res = await fetch(`/api/stats/${title}`, { method: "POST" });
       const json = await res.json().catch(() => null);
       if (!res.ok) throw new Error(json?.error || `Falha ao atualizar (${res.status})`);
-      setData(json);
+      setData(normalizeStats(json));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -476,7 +449,7 @@ export default function TitleStatusPanel({ title }: { title: string }) {
           <h2 className="text-lg font-semibold">Status do título</h2>
           {data && (
             <p className="mt-1 text-xs text-muted-foreground">
-              Gerado em {new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(data.meta.generatedAtIso))} ·{" "}
+              Gerado em {formatGeneratedAt(data.meta.generatedAtIso)} ·{" "}
               {data.summary.chapterCount} capítulos · {data.summary.imageCountTotal} imagens
               {views?.height && ` · ${(views.height.summary.total / 1e6).toFixed(1)}M px de altura`}
             </p>
@@ -486,6 +459,12 @@ export default function TitleStatusPanel({ title }: { title: string }) {
       </div>
 
       {error && <p className="text-sm text-destructive whitespace-pre-wrap break-words">{error}</p>}
+
+      {data?.legacy && (
+        <p className="text-xs rounded-lg border border-chart-3/40 bg-chart-3/10 text-foreground/80 px-3 py-2">
+          Este status foi gerado por uma versão antiga do manga-stats (sem média móvel nem métrica de altura). Use “Atualizar status” para regerar.
+        </p>
+      )}
 
       {loading ? (
         <p className="text-sm text-muted-foreground">Carregando…</p>
