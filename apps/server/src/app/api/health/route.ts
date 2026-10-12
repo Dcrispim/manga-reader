@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 export async function GET() {
   const serverId = await getServerId()
   // Version is hardcoded here to match package.json; updated in each milestone.
-  const version = '1.3.5'
+  const version = '1.3.6'
 
   const response = {
     ...(serverId && { serverId }),
