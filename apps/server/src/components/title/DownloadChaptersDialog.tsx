@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { lastChapter, planDownload } from "./downloadPlan";
 import type { StatsReport } from "./statsReport";
 
-// The chapter URL rarely changes for a title, so it's remembered per title.
+// The chapter URL rarely changes for a title, so it's remembered per title as
+// it's typed (even if the download never starts).
 const templateKey = (title: string) => `download-template:${title}`;
 function loadTemplate(title: string) {
   try {
@@ -63,7 +64,6 @@ export default function DownloadChaptersDialog({ title, stats, open, onOpenChang
       });
       const json = await res.json().catch(() => null);
       if (!res.ok) throw new Error(json?.error || `Falha ao iniciar o download (${res.status})`);
-      saveTemplate(title, plan.request.template);
       const { start, end, gaps } = plan.request;
       const what = [start && `capítulos ${start}–${end}`, gaps && "gaps"].filter(Boolean).join(" + ");
       onStarted(`Download iniciado: ${what}${update ? " (sobrescrevendo)" : ""}. O status é atualizado ao terminar.`);
@@ -90,7 +90,10 @@ export default function DownloadChaptersDialog({ title, stats, open, onOpenChang
             <Input
               id="download-template"
               value={template}
-              onChange={(e) => setTemplate(e.target.value)}
+              onChange={(e) => {
+                setTemplate(e.target.value);
+                saveTemplate(title, e.target.value);
+              }}
               placeholder="https://site/manga/titulo/capitulo/{chapter}"
               required
             />
