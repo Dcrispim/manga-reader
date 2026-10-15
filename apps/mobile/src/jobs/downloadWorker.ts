@@ -104,6 +104,30 @@ async function presentPages(files: FileStore, tmp: string): Promise<Set<number>>
 }
 
 /**
+ * A job whose pages are all in the tmp dir (the app died between the last page
+ * and the commit) is committed with no network: offline it would otherwise sit
+ * "in the queue, 8/8" forever. Returns true if it committed.
+ */
+export async function commitIfComplete(db: Db, files: FileStore, job: Job): Promise<boolean> {
+  try {
+    const total = job.pagesTotal ?? 0;
+    if (total <= 0) return false;
+    const tmp = chapterTmpDir(files, job.title, job.chapter);
+    if ((await presentPages(files, tmp)).size < total) return false;
+    const committed = await commitChapter(db, files, {
+      title: job.title,
+      chapter: job.chapter,
+      pages: total,
+      quality: 'original',
+    });
+    if (committed) markDone(db, job.id);
+    return committed;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Runs one download job. Never throws. Only a 404 for the chapter list ends a
  * job as `failed`; any other trouble keeps it `queued` with a backoff.
  */
@@ -121,6 +145,7 @@ export async function runDownloadJob(job: Job, deps: WorkerDeps): Promise<JobOut
       markDone(db, job.id);
       return 'done';
     }
+    if (await commitIfComplete(db, files, job)) return 'done';
 
     const list = await client.getJson<{ images: string[] }>(
       paths.readChapter(job.title, job.chapter),

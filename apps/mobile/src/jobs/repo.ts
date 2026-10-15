@@ -19,7 +19,9 @@ export function backoffMs(attempts: number): number {
 /**
  * Idempotent: the (kind,title,chapter) row is created once; enqueuing it again
  * reactivates it (queued, no backoff) but keeps its progress so a resume does
- * not start over. A job that is running right now is left alone.
+ * not start over. A finished job (its chapter evicted since) starts from zero:
+ * its old count would read as "8/8 in the queue". A job that is running right
+ * now is left alone.
  */
 export function enqueue(
   db: Db,
@@ -34,8 +36,15 @@ export function enqueue(
     if (!existing) {
       db.insert(jobs).values({ kind, title, chapter, createdAt: now }).run();
     } else if (existing.state !== 'running') {
+      const finished = existing.state === 'done' || existing.state === 'failed';
       db.update(jobs)
-        .set({ state: 'queued', attempts: 0, nextAttemptAt: 0, lastError: null })
+        .set({
+          state: 'queued',
+          attempts: 0,
+          nextAttemptAt: 0,
+          lastError: null,
+          ...(finished ? { pagesDone: 0, pagesTotal: null } : {}),
+        })
         .where(where)
         .run();
     }

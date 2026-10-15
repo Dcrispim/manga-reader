@@ -9,11 +9,15 @@ interface Props {
   uri: string;
   /** The page is still downloading into the cache: hold its place, load nothing. */
   pending?: boolean;
+  /** This page's aspect from an earlier mount, so a re-mount keeps its height. */
+  knownAspect?: number;
   /** Last aspect seen in this chapter; keeps a failed page about the right height. */
   fallbackAspect?: number;
   /** Bumped by the screen when the server turns online, to retry failed pages. */
   retryToken?: number;
-  onAspect?: (aspect: number) => void;
+  /** Passed back with onAspect, so one stable callback serves every page. */
+  aspectKey?: string;
+  onAspect?: (aspect: number, key?: string) => void;
   /** Lets E2E flows find a given page (e.g. page-0). */
   testID?: string;
 }
@@ -23,9 +27,9 @@ interface Props {
  * load shows a quiet placeholder; tapping it (or the server coming back)
  * retries. Never an alert or a toast.
  */
-export const PageImage = memo(function PageImage({ uri, pending = false, fallbackAspect, retryToken = 0, onAspect, testID }: Props) {
+export const PageImage = memo(function PageImage({ uri, pending = false, knownAspect, fallbackAspect, retryToken = 0, aspectKey, onAspect, testID }: Props) {
   const { width } = useWindowDimensions();
-  const [aspect, setAspect] = useState<number | null>(null);
+  const [aspect, setAspect] = useState<number | null>(knownAspect ?? null);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [lastToken, setLastToken] = useState(retryToken);
@@ -79,7 +83,7 @@ export const PageImage = memo(function PageImage({ uri, pending = false, fallbac
           const { width: w, height: h } = e.source;
           if (w > 0 && h > 0) {
             setAspect(w / h);
-            onAspect?.(w / h);
+            onAspect?.(w / h, aspectKey);
           }
         }}
         onError={() => setFailed(true)}

@@ -1,7 +1,7 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useLiveQuery } from "../../../db/liveQuery";
 import { Feather } from "@expo/vector-icons";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { chapterRows, q } from "../../../catalog/queries";
 import { db } from "../../../db/client";
 import { enqueueAndDrain } from "../../../jobs/drain";
+import { commitIfComplete } from "../../../jobs/downloadWorker";
 import { createClient } from "../../../net/client";
 import { PageImage } from "../../../reader/PageImage";
 import { ReaderMenu } from "../../../reader/ReaderMenu";
@@ -74,7 +75,7 @@ export default function ReaderScreen() {
   const insets = useSafeAreaInsets();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const { state, quality, setQuality, xlAvailable } = useChapter({
+  const { state, quality, setQuality, xlAvailable, retry } = useChapter({
     db,
     client,
     files: expoFileStore,
@@ -93,7 +94,27 @@ export default function ReaderScreen() {
   }, [online]);
 
   const [aspect, setAspect] = useState<number | undefined>(undefined);
+  // Real aspect of every page loaded so far: a page the list re-mounts gets its
+  // true height at once instead of the fallback and then the real one, which
+  // shifted everything below it (the list "climbing" near the end).
+  const aspects = useRef(new Map<string, number>());
+  const rememberAspect = useCallback((a: number, key?: string) => {
+    if (key) aspects.current.set(key, a);
+    setAspect(a);
+  }, []);
   const job = (jobRows ?? []).find((j) => j.kind === "download" && j.chapter === chapter) ?? null;
+
+  // Every page downloaded but the app died before the commit: finish it here,
+  // with no network, instead of showing "in the queue, 8/8" while offline.
+  const jobComplete = !!job && (job.pagesTotal ?? 0) > 0 && job.pagesDone >= (job.pagesTotal ?? 0);
+  const unavailable = state.status === "unavailable";
+  useEffect(() => {
+    if (!unavailable || !job || !jobComplete || job.state === "running") return;
+    void commitIfComplete(db, expoFileStore, job).then((ok) => {
+      if (ok) retry();
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [unavailable, jobComplete, job?.id, job?.state]);
 
   const goTo = (target: string) =>
     router.replace({ pathname: "/read/[title]/[chapter]", params: { title, chapter: target } });
@@ -235,9 +256,11 @@ export default function ReaderScreen() {
                 testID={`page-${item.index}`}
                 uri={item.uri}
                 pending={item.pending}
+                aspectKey={`${quality}-${item.index}`}
+                knownAspect={aspects.current.get(`${quality}-${item.index}`)}
                 fallbackAspect={aspect}
                 retryToken={retryToken}
-                onAspect={setAspect}
+                onAspect={rememberAspect}
               />
             )}
             ListFooterComponent={

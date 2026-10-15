@@ -3,13 +3,13 @@ import { act, create } from 'react-test-renderer';
 
 import { createTestDb } from '../../db/testDb';
 import { history, jobs } from '../../db/schema';
-import { setSetting } from '../../settings/repo';
+import { getSetting, setSetting } from '../../settings/repo';
 import { chapterTmpDir, commitChapter } from '../../storage/downloads';
 import { memoryFileStore } from '../../storage/memoryFileStore';
 import { transientPages } from '../../db/schema';
 import { getOpenChapterId } from '../openChapter';
 import { setLocalPageProvider, type ResolverClient } from '../resolve';
-import { imagePathOf, useChapter, type ChapterState } from '../useChapter';
+import { imagePathOf, preferredQuality, QUALITY_KEY, useChapter, type ChapterState } from '../useChapter';
 
 function fakeClient(images: string[] | null, xl: string[] | null = null): ResolverClient {
   return {
@@ -67,6 +67,21 @@ describe('useChapter', () => {
     }
     expect(db.select().from(transientPages).all()).toHaveLength(2);
     expect(files.downloadLog).toHaveLength(2);
+  });
+
+  it('keeps the pages on screen when going offline makes the chapter unresolvable', async () => {
+    const db = createTestDb();
+    setSetting(db, QUALITY_KEY, 'xl');
+    const files = memoryFileStore();
+    const input = { db, client: fakeClient(['/a/1.jpg'], ['/x/1.jpg']), files, title: 'T', chapter: '1', upcoming: [], online: true };
+    const { out, rerender } = mount(input);
+    await flush();
+    expect(out.current!.quality).toBe('xl');
+    // Offline: xl falls back to original, which was never cached.
+    rerender({ ...input, client: fakeClient(null), online: false });
+    await flush();
+    const s = out.current!.state;
+    expect(s.status === 'ready' && s.pages.map((p) => p.uri)).toEqual(['http://srv/x/1.jpg']);
   });
 
   it('falls back to the page URL when its download fails', async () => {
@@ -134,6 +149,16 @@ describe('useChapter', () => {
     expect(one.select().from(jobs).all().map((j) => j.chapter)).toEqual(['2']);
   });
 
+  it('never queues more chapters ahead than the per-title limit', async () => {
+    const db = createTestDb();
+    setSetting(db, 'downloads.ahead', '10');
+    setSetting(db, 'space.maxPerTitle', '3');
+    const upcoming = Array.from({ length: 10 }, (_, i) => String(121 + i));
+    mount({ db, client: fakeClient(['/a/1.jpg']), files: memoryFileStore(), title: 'T', chapter: '120', upcoming, online: true });
+    await flush();
+    expect(db.select().from(jobs).all().map((j) => j.chapter)).toEqual(['121', '122', '123']);
+  });
+
   it('does not queue chapters ahead when set to 0', async () => {
     const db = createTestDb();
     setSetting(db, 'downloads.ahead', '0');
@@ -156,5 +181,50 @@ describe('useChapter', () => {
     await flush();
     expect(out.current!.xlAvailable).toBe(false);
     expect(out.current!.quality).toBe('original');
+  });
+
+  it('keeps the picked quality for the next chapter', async () => {
+    const db = createTestDb();
+    const files = memoryFileStore();
+    const client = fakeClient(['/a/1.jpg'], ['/x/1.jpg']);
+    const first = mount({ db, client, files, title: 'T', chapter: '1', upcoming: [], online: true });
+    await flush();
+    act(() => first.out.current!.setQuality('xl'));
+    expect(getSetting(db, QUALITY_KEY)).toBe('xl');
+    act(() => first.tree.unmount());
+
+    const next = mount({ db, client, files, title: 'T', chapter: '2', upcoming: [], online: true });
+    await flush();
+    expect(next.out.current!.quality).toBe('xl');
+  });
+
+  it('loads xl straight away when it is the preference, without the original first', async () => {
+    const db = createTestDb();
+    setSetting(db, QUALITY_KEY, 'xl');
+    const requested: string[] = [];
+    const base = fakeClient(['/a/1.jpg'], ['/x/1.jpg']);
+    const client: ResolverClient = {
+      url: base.url,
+      getJson: ((path: string, schema: never) => {
+        requested.push(path);
+        return base.getJson(path, schema);
+      }) as ResolverClient['getJson'],
+    };
+    const { out } = mount({ db, client, files: memoryFileStore(), title: 'T', chapter: '1', upcoming: [], online: true });
+    await flush();
+    const state = out.current!.state;
+    expect(state.status === 'ready' && state.pages.map((p) => p.uri)).toEqual(['http://srv/x/1.jpg']);
+    expect(requested.some((p) => !p.endsWith('/xl'))).toBe(false);
+  });
+});
+
+describe('preferredQuality', () => {
+  it('follows high-res downloads until a quality is picked', () => {
+    const db = createTestDb();
+    expect(preferredQuality(db)).toBe('original');
+    setSetting(db, 'downloads.highRes', 'true');
+    expect(preferredQuality(db)).toBe('xl');
+    setSetting(db, QUALITY_KEY, 'original');
+    expect(preferredQuality(db)).toBe('original');
   });
 });

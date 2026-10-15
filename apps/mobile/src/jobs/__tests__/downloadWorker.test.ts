@@ -4,12 +4,13 @@ import { chapterTmpDir, chapterDir } from '../../storage/downloads';
 import { memoryFileStore } from '../../storage/memoryFileStore';
 import { fetchToTransient, setPageCount } from '../../storage/transient';
 import {
+  commitIfComplete,
   createSemaphore,
   runDownloadJob,
   type WorkerClient,
   type WorkerDeps,
 } from '../downloadWorker';
-import { backoffMs, enqueue, getJob } from '../repo';
+import { backoffMs, enqueue, getJob, markProgress } from '../repo';
 
 type Db = ReturnType<typeof createTestDb>;
 
@@ -145,6 +146,27 @@ describe('runDownloadJob', () => {
     expect(db.select().from(downloads).all()).toHaveLength(1);
     expect(db.select().from(transientPages).all()).toHaveLength(0);
     expect(db.select().from(chapterSources).all()).toHaveLength(1);
+  });
+
+  it('commits a chapter whose pages are all in tmp without the network', async () => {
+    const { db, deps, base, state } = setup({ pages: 3, listError: { reason: 'unreachable' } });
+    const job = enqueue(db, 'download', 'T', '1')!;
+    const tmp = chapterTmpDir(base, 'T', '1');
+    for (let i = 1; i <= 3; i++) await base.download(`http://srv/img/${i}.jpg`, `${tmp}/00${i}.jpg`);
+    markProgress(db, job.id, 3, 3);
+    expect(await commitIfComplete(db, base, getJob(db, job.id)!)).toBe(true);
+    expect(getJob(db, job.id)!.state).toBe('done');
+    expect(db.select().from(downloads).all()).toHaveLength(1);
+    expect(state.listCalls).toBe(0);
+  });
+
+  it('does not commit a partial tmp', async () => {
+    const { db, base } = setup();
+    const job = enqueue(db, 'download', 'T', '1')!;
+    await base.download('http://srv/img/1.jpg', `${chapterTmpDir(base, 'T', '1')}/001.jpg`);
+    markProgress(db, job.id, 1, 3);
+    expect(await commitIfComplete(db, base, getJob(db, job.id)!)).toBe(false);
+    expect(db.select().from(downloads).all()).toHaveLength(0);
   });
 
   it('never exceeds 2 simultaneous image requests, even across jobs', async () => {

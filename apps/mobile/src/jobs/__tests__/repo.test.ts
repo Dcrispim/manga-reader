@@ -42,6 +42,14 @@ describe('jobs repo', () => {
     expect(enqueue(db, 'download', 'T', '1')!.state).toBe('running');
   });
 
+  it('a finished job starts from zero when queued again (its chapter was evicted)', () => {
+    const db = createTestDb();
+    const a = enqueue(db, 'download', 'T', '1')!;
+    markProgress(db, a.id, 8, 8);
+    markDone(db, a.id);
+    expect(enqueue(db, 'download', 'T', '1')).toMatchObject({ state: 'queued', pagesDone: 0, pagesTotal: null });
+  });
+
   it('nextRunnable honours state, next_attempt_at and kinds', () => {
     const db = createTestDb();
     const a = enqueue(db, 'download', 'T', '1')!;
