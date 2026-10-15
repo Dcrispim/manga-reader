@@ -27,6 +27,8 @@ import { UnavailableChapter } from "../../../reader/UnavailableChapter";
 import { ZoomableList } from "../../../reader/ZoomableList";
 import { nextChapter } from "../../../reader/nextChapter";
 import { useChapter } from "../../../reader/useChapter";
+import { useConfirmLeave } from "../../../reader/useConfirmLeave";
+import { useScrollSnaps } from "../../../reader/useScrollSnaps";
 import { useServerStatus } from "../../../server/useServerStatus";
 import { expoFileStore } from "../../../storage/files";
 import { getSetting } from "../../../settings/repo";
@@ -41,6 +43,7 @@ const client = createClient({ db });
 export default function ReaderScreen() {
   const { title, chapter } = useLocalSearchParams<{ title: string; chapter: string }>();
   const router = useRouter();
+  const leave = useConfirmLeave();
   const { status } = useServerStatus();
   const online = status === "online";
 
@@ -117,7 +120,7 @@ export default function ReaderScreen() {
   }, [unavailable, jobComplete, job?.id, job?.state]);
 
   const goTo = (target: string) =>
-    router.replace({ pathname: "/read/[title]/[chapter]", params: { title, chapter: target } });
+    leave(() => router.replace({ pathname: "/read/[title]/[chapter]", params: { title, chapter: target } }));
 
   const goNext = () => {
     if (!next) return;
@@ -149,6 +152,7 @@ export default function ReaderScreen() {
   const [pullEnabled] = useState(() => getSetting(db, 'reader.pullNext') !== 'false');
   const pullNext = usePullToNext({ next, onNext: goNext, enabled: pullEnabled });
   const showBar = xlAvailable && online;
+  const { ref: snapsRef, ...snaps } = useScrollSnaps({ db, title, chapter });
 
   const header = (
     <>
@@ -163,7 +167,7 @@ export default function ReaderScreen() {
           },
         ]}
       >
-        <IconButton icon="arrow-left" label="Voltar" color={colors.foreground} size={22} onPress={() => router.back()} />
+        <IconButton icon="arrow-left" label="Voltar" color={colors.foreground} size={22} onPress={() => leave(() => router.back())} />
         <Text style={styles.headerTitle} numberOfLines={1}>{`${displayName(title)} · Cap. ${chapter}`}</Text>
         <ServerStatusPill status={status} />
       </Animated.View>
@@ -206,8 +210,8 @@ export default function ReaderScreen() {
         xlAvailable={showBar}
         onQuality={setQuality}
         onChapter={goTo}
-        onTitle={() => router.dismissTo({ pathname: "/title/[name]", params: { name: title } })}
-        onHome={() => router.dismissTo("/")}
+        onTitle={() => leave(() => router.dismissTo({ pathname: "/title/[name]", params: { name: title } }))}
+        onHome={() => leave(() => router.dismissTo("/"))}
       />
     </>
   );
@@ -220,7 +224,7 @@ export default function ReaderScreen() {
           <UnavailableChapter
             job={job}
             onDownload={() => enqueueAndDrain(db, "download", title, chapter)}
-            onBack={() => router.back()}
+            onBack={() => leave(() => router.back())}
           />
         </View>
         {menu}
@@ -238,6 +242,7 @@ export default function ReaderScreen() {
         <ZoomableList>
           <PullToNextArea pan={pullNext.pan} contentStyle={pullNext.contentStyle}>
           <GHFlatList
+            ref={snapsRef}
             simultaneousHandlers={pullNext.panRef}
             data={state.pages}
             keyExtractor={(p) => `${quality}-${p.index}`}
@@ -248,7 +253,10 @@ export default function ReaderScreen() {
             onScroll={(e) => {
               onScroll(e);
               pullNext.onScroll(e);
+              snaps.onScroll(e);
             }}
+            onContentSizeChange={snaps.onContentSizeChange}
+            onScrollBeginDrag={snaps.onScrollBeginDrag}
             scrollEventThrottle={16}
             contentContainerStyle={{ paddingTop: headerHeight }}
             renderItem={({ item }) => (
