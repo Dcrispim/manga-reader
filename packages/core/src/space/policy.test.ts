@@ -67,6 +67,28 @@ describe("planEviction", () => {
     expect(planEviction(list, { ...BIG, maxPerTitle: 1 }, [])).toEqual(["newRead", "oldUnread"]);
   });
 
+  it("per title, unread with numbers: farthest chapter leaves first", () => {
+    // Reading 120 queued 121..130; they were saved in order.
+    const list = Array.from({ length: 6 }, (_, i) => ({ ...ch(`a${121 + i}`, "A", i), number: 121 + i }));
+    expect(planEviction(list, { ...BIG, maxPerTitle: 5 }, ["a126"])).toEqual(["a125"]);
+    expect(planEviction(list, { ...BIG, maxPerTitle: 5 }, [])).toEqual(["a126"]);
+  });
+
+  it("per title, read chapters still leave before unread ones", () => {
+    const list = [
+      { ...ch("a1", "A", 5, true), number: 1 },
+      { ...ch("a2", "A", 1), number: 2 },
+      { ...ch("a9", "A", 2), number: 9 },
+    ];
+    expect(planEviction(list, { ...BIG, maxPerTitle: 1 }, [])).toEqual(["a1", "a9"]);
+  });
+
+  it("the open chapter is protected and does not count per title", () => {
+    const list = [1, 2, 3].map((n) => ({ ...ch(`a${n}`, "A", n), number: n }));
+    expect(planEviction(list, { ...BIG, maxPerTitle: 2 }, [], "a1")).toEqual([]);
+    expect(planEviction(list, { ...BIG, maxPerTitle: 1 }, [], "a1")).toEqual(["a3"]);
+  });
+
   it("does nothing under the limits", () => {
     expect(planEviction([ch("a", "A", 1)], DEFAULT_LIMITS, [])).toEqual([]);
   });

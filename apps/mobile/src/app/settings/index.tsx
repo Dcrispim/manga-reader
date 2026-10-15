@@ -318,7 +318,7 @@ export default function SettingsScreen() {
         <View style={styles.optionRow}>
           <View style={styles.optionText}>
             <Text>Capítulos à frente para baixar</Text>
-            <Text style={common.muted}>{`Baixados ao abrir um capítulo (0 desliga, até ${MAX_DOWNLOAD_AHEAD}).`}</Text>
+            <Text style={common.muted}>{`Baixados ao abrir um capítulo (0 desliga, até ${MAX_DOWNLOAD_AHEAD}; nunca mais que o limite por título).`}</Text>
           </View>
           <TextInput
             style={[common.input, styles.aheadInput]}

@@ -7,6 +7,8 @@ export type StoredChapter = {
   bytes: number;
   savedAt: number;
   isRead: boolean;
+  /** Chapter number inside its title, when known (orders unread chapters per title). */
+  number?: number;
 };
 
 export type Limits = { maxPerTitle: number; maxGlobal: number; maxBytes: number };
@@ -42,12 +44,32 @@ function evictionOrder(chapters: StoredChapter[]): StoredChapter[] {
   );
 }
 
+// Inside one title, unread chapters leave farthest first (highest number), so
+// the ones right after the reading position survive a download-ahead burst.
+// Read chapters and chapters without a number keep the global order.
+function titleOrder(chapters: StoredChapter[]): StoredChapter[] {
+  const known = (c: StoredChapter) =>
+    !c.isRead && c.number !== undefined && Number.isFinite(c.number);
+  return evictionOrder(chapters).sort(
+    (a, b) =>
+      Number(b.isRead) - Number(a.isRead) ||
+      (known(a) && known(b) ? b.number! - a.number! : 0) ||
+      Number(known(b)) - Number(known(a)),
+  );
+}
+
+/**
+ * `openId` (the chapter in the reader) is protected and does not count toward
+ * the per-title limit: it is being consumed and will soon be read.
+ */
 export function planEviction(
   chapters: StoredChapter[],
   limits: Limits,
   protectedIds: string[],
+  openId: string | null = null,
 ): string[] {
   const guarded = new Set(protectedIds);
+  if (openId !== null) guarded.add(openId);
   const ordered = evictionOrder(chapters);
   const removed = new Set<string>();
   const plan: string[] = [];
@@ -63,8 +85,9 @@ export function planEviction(
   // 1. Per-title count.
   const titles = [...new Set(ordered.map((c) => c.title))];
   for (const title of titles) {
-    const inTitle = alive().filter((c) => c.title === title);
-    let excess = inTitle.length - limits.maxPerTitle;
+    const inTitle = titleOrder(alive().filter((c) => c.title === title));
+    const counted = inTitle.filter((c) => c.id !== openId);
+    let excess = counted.length - limits.maxPerTitle;
     for (const c of candidates(inTitle)) {
       if (excess <= 0) break;
       evict(c);

@@ -85,10 +85,7 @@ export async function commitChapter(
   if (quality === 'original' && getSetting(db, 'downloads.highRes') === 'true') {
     enqueue(db, 'upgrade', title, chapter);
   }
-  const protectedIds = [chapterId(title, chapter)];
-  const open = getOpenChapterId();
-  if (open) protectedIds.push(open);
-  await enforceSpace(db, files, protectedIds);
+  await enforceSpace(db, files, [chapterId(title, chapter)]);
   return true;
 }
 
@@ -153,7 +150,10 @@ export async function deleteAll(db: Db, files: FileStore): Promise<void> {
   db.delete(downloads).run();
 }
 
-/** Applies the core eviction plan; every eviction is recorded in diag_log. */
+/**
+ * Applies the core eviction plan; every eviction is recorded in diag_log.
+ * The chapter open in the reader is always protected.
+ */
 export async function enforceSpace(
   db: Db,
   files: FileStore,
@@ -166,13 +166,14 @@ export async function enforceSpace(
     bytes: r.bytes,
     savedAt: r.savedAt,
     isRead: isRead(db, r.title, r.chapter),
+    number: parseFloat(r.chapter),
   }));
   const limits = {
     maxPerTitle: numSetting(db, 'space.maxPerTitle', DEFAULT_LIMITS.maxPerTitle),
     maxGlobal: numSetting(db, 'space.maxGlobal', DEFAULT_LIMITS.maxGlobal),
     maxBytes: numSetting(db, 'space.maxBytes', DEFAULT_LIMITS.maxBytes),
   };
-  const plan = new Set(planEviction(stored, limits, protectedIds));
+  const plan = new Set(planEviction(stored, limits, protectedIds, getOpenChapterId()));
   for (const r of rows) {
     if (!plan.has(chapterId(r.title, r.chapter))) continue;
     await deleteChapter(db, files, r.title, r.chapter);

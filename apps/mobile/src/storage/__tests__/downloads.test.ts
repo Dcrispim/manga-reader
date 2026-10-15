@@ -73,7 +73,7 @@ describe('downloads storage', () => {
     expect(rows(db)).toEqual([]);
   });
 
-  it('evicts per title, oldest first, read chapters first', async () => {
+  it('evicts per title, read chapters first, then the farthest unread', async () => {
     const db = createTestDb();
     const files = memoryFileStore();
     setSetting(db, 'space.maxPerTitle', '2');
@@ -81,13 +81,14 @@ describe('downloads storage', () => {
       jest.setSystemTime(1000 + i);
       await save(db, files, 'A', c);
     }
-    // 3 saved with limit 2: oldest (1) goes.
-    expect(rows(db).map((r) => r.chapter).sort()).toEqual(['2', '3']);
-    // Mark 3 as read: the read one is evicted before the older unread 2.
+    // 3 saved with limit 2 (3 is protected while it commits): the farthest
+    // other unread (2) goes, never the one right after the reading position.
+    expect(rows(db).map((r) => r.chapter).sort()).toEqual(['1', '3']);
+    // Mark 3 as read: the read one is evicted before the unread 1.
     recordOpen(db, 'A', '3', 5);
     jest.setSystemTime(2000);
     await save(db, files, 'A', '4');
-    expect(rows(db).map((r) => r.chapter).sort()).toEqual(['2', '4']);
+    expect(rows(db).map((r) => r.chapter).sort()).toEqual(['1', '4']);
     expect(await files.exists(chapterDir(files, 'A', '3'))).toBe(false);
     expect(
       db.select().from(diagLog).all().filter((l) => l.scope === 'space').length,

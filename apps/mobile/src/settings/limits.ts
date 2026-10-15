@@ -1,7 +1,6 @@
 import { DEFAULT_LIMITS } from '@manga/core';
 
 import type { Db } from '../db/types';
-import { getOpenChapterId } from '../reader/openChapter';
 import { enforceSpace } from '../storage/downloads';
 import type { FileStore } from '../storage/files';
 import { enforceTransientNow } from '../storage/transient';
@@ -90,8 +89,7 @@ export async function applyLimit(
   if (key === 'space.transientMaxBytes') {
     await enforceTransientNow(db, files);
   } else if (key !== 'space.minFreeBytes') {
-    const open = getOpenChapterId();
-    await enforceSpace(db, files, open ? [open] : []);
+    await enforceSpace(db, files, []);
   }
 }
 
