@@ -10,6 +10,7 @@ import { downloads, jobs } from '../db/schema';
 import { log } from '../diag/log';
 import type { Result } from '../lib/result';
 import { chapterXlTmpDir, replaceChapterImages } from '../storage/downloads';
+import { clearImageMemoryCache } from '../storage/imageCache';
 import { MAX_CONCURRENT_PAGES, type JobOutcome, type WorkerDeps } from './downloadWorker';
 import { cancel, getJob, markDone, markFailed, markRunning, requeue, reschedule, type Job } from './repo';
 
@@ -205,6 +206,8 @@ export async function runUpgradeJob(job: Job, deps: WorkerDeps): Promise<Upgrade
       quality: 'xl',
     });
     if (!swapped) log(db, 'info', 'jobs', `upgrade skipped, chapter gone: ${job.title} / ${job.chapter}`);
+    // The xl pages may keep the original file names: drop the cached originals.
+    else await clearImageMemoryCache();
     markDone(db, job.id);
     return 'done';
   } catch (err) {

@@ -1,20 +1,11 @@
-import { Image } from 'expo-image';
-
 import type { Db } from '../db/types';
 import { log } from '../diag/log';
 import { setSetting } from '../settings/repo';
+import { clearImageCaches } from '../storage/imageCache';
 import { acceptPendingServer } from '../server/status';
 import { disconnectBind } from './bind';
 import { CURSOR_KEY } from './catalog';
 import { runCycle } from './cycle';
-
-async function clearImageCaches(): Promise<void> {
-  try {
-    await Promise.all([Image.clearMemoryCache(), Image.clearDiskCache()]);
-  } catch {
-    // Best effort: a stale cached image is not worth failing the switch.
-  }
-}
 
 /**
  * Makes the app follow another server: adopts its id, rewinds the catalog so

@@ -18,6 +18,7 @@ import {
 import { getSetting, setSetting } from '../../settings/repo';
 import { deleteAll, deleteTitle } from '../../storage/downloads';
 import { expoFileStore } from '../../storage/files';
+import { clearImageCaches } from '../../storage/imageCache';
 import { clearTransient } from '../../storage/transient';
 import { Bar, Button, Section, common } from '../../ui/SettingsBits';
 import { Text } from '../../ui/Text';
@@ -179,7 +180,9 @@ export default function StorageScreen() {
               label="Remover"
               danger
               onPress={() =>
-                confirm('Remover downloads', r.title, () => deleteTitle(db, expoFileStore, r.title))
+                confirm('Remover downloads', r.title, () =>
+                  deleteTitle(db, expoFileStore, r.title).then(clearImageCaches),
+                )
               }
             />
           </View>
@@ -192,17 +195,19 @@ export default function StorageScreen() {
           danger
           onPress={() =>
             confirm('Remover todos os downloads?', 'Os capítulos baixados serão apagados.', () =>
-              deleteAll(db, expoFileStore),
+              deleteAll(db, expoFileStore).then(clearImageCaches),
             )
           }
         />
         <Button
           label="Limpar cache de leitura"
           onPress={() => {
-            void clearTransient(db, expoFileStore).then(() => {
-              setMessage('Cache de leitura limpo.');
-              setVersion((v) => v + 1);
-            });
+            void clearTransient(db, expoFileStore)
+              .then(clearImageCaches)
+              .then(() => {
+                setMessage('Cache de leitura limpo.');
+                setVersion((v) => v + 1);
+              });
           }}
         />
         <Button

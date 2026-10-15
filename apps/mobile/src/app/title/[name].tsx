@@ -21,6 +21,7 @@ import { hasFeature } from "../../server/status";
 import { useServerStatus } from "../../server/useServerStatus";
 import { deleteChapter } from "../../storage/downloads";
 import { expoFileStore } from "../../storage/files";
+import { clearImageCaches } from "../../storage/imageCache";
 import { syncTitleOnDemand } from "../../sync/catalog";
 import { usePullRefresh } from "../../sync/usePullRefresh";
 import { Button, IconButton } from "../../ui/Button";
@@ -376,7 +377,9 @@ const ChapterItem = memo(function ChapterItem({
           <IconButton
             icon="trash-2"
             label="Remover download"
-            onPress={() => void deleteChapter(db, expoFileStore, title, row.chapter)}
+            onPress={() =>
+              void deleteChapter(db, expoFileStore, title, row.chapter).then(clearImageCaches)
+            }
           />
         ) : null}
         <Feather name="arrow-right" size={16} color={colors.mutedForeground} />
